@@ -21,7 +21,7 @@ static int test_reg_bulk_simple(void)
 {
    uint32_t initial[3]   = {0x12345678, 0x9abcdef0, 0x0fedcba9};
    uint32_t temp[3]      = {0};
-   struct reg_device dev = {.reg_width = 32,
+   struct reg_dev dev = {.reg_width = 32,
                             .reg_num   = 3,
                             .field_map = NULL,
                             .data      = temp,
@@ -59,7 +59,7 @@ static int test_reg_bulk_simple(void)
  */
 static int test_reg_bulk_zero_regs(void)
 {
-   struct reg_device dev = {.reg_width = 32,
+   struct reg_dev dev = {.reg_width = 32,
                             .reg_num   = 0,
                             .field_map = NULL,
                             .data      = NULL,
@@ -87,7 +87,7 @@ static int test_reg_bulk_large(void)
       buffer[i]  = 0;
    }
 
-   struct reg_device dev = {.reg_width = 32,
+   struct reg_dev dev = {.reg_width = 32,
                             .reg_num   = N,
                             .field_map = NULL,
                             .data      = buffer,
@@ -127,7 +127,7 @@ static int test_reg_bulk_null_dev(void)
 static int test_reg_bulk_null_storage(void)
 {
    uint32_t input[2]     = {0xaa, 0xbb};
-   struct reg_device dev = {.reg_width = 32,
+   struct reg_dev dev = {.reg_width = 32,
                             .reg_num   = 2,
                             .field_map = NULL,
                             .data      = NULL,
@@ -147,7 +147,7 @@ static int test_reg_bulk_null_storage(void)
 static int test_reg_bulk_zero_width(void)
 {
    uint32_t buf[2]       = {1, 2};
-   struct reg_device dev = {.reg_width = 0,
+   struct reg_dev dev = {.reg_width = 0,
                             .reg_num   = 2,
                             .field_map = NULL,
                             .data      = buf,
@@ -169,7 +169,7 @@ static int test_reg_bulk_zero_width(void)
 static int test_reg_bulk_single_clear(void)
 {
    uint32_t word         = 0xffffffff;
-   struct reg_device dev = {.reg_width = 32,
+   struct reg_dev dev = {.reg_width = 32,
                             .reg_num   = 1,
                             .field_map = NULL,
                             .data      = &word,
@@ -195,7 +195,7 @@ static int test_reg_bulk_weird_width(void)
 {
    uint32_t src[2]       = {0x11111111, 0x22222222};
    uint32_t dst[2]       = {0};
-   struct reg_device dev = {.reg_width =
+   struct reg_dev dev = {.reg_width =
                                 24, // Not 32, but irrelevant for copying
                             .reg_num   = 2,
                             .field_map = NULL,
@@ -220,7 +220,7 @@ static int test_reg_bulk_weird_width(void)
  */
 static int test_reg_bulk_null_data_storage(void)
 {
-   struct reg_device dev = {.reg_width = 32,
+   struct reg_dev dev = {.reg_width = 32,
                             .reg_num   = 2,
                             .field_map = NULL,
                             .data      = NULL,
@@ -246,7 +246,7 @@ static int test_reg_bulk_incomplete_input_data(void)
    // Here we demonstrate intent, but we use same-sized arrays for safety.
    uint32_t src[10];
    uint32_t dst[10];
-   struct reg_device dev = {.reg_width = 32,
+   struct reg_dev dev = {.reg_width = 32,
                             .reg_num   = 10,
                             .field_map = NULL,
                             .data      = dst,

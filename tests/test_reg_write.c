@@ -31,7 +31,7 @@ static int mock_update_fn(size_t reg, uint32_t val)
  */
 static int test_reg_write_valid(void)
 {
-   struct reg_device dev = {
+   struct reg_dev dev = {
        .reg_width = 32,
        .reg_num   = 4,
        .field_map = NULL,
@@ -72,7 +72,7 @@ static int test_reg_write_null_device(void)
  */
 static int test_reg_write_null_data(void)
 {
-   struct reg_device dev = {
+   struct reg_dev dev = {
        .reg_width = 32,
        .reg_num   = 2,
        .field_map = NULL,
@@ -93,7 +93,7 @@ static int test_reg_write_null_data(void)
  */
 static int test_reg_write_zero_width(void)
 {
-   struct reg_device dev = {
+   struct reg_dev dev = {
        .reg_width = 0,
        .reg_num   = 4,
        .field_map = NULL,
@@ -114,7 +114,7 @@ static int test_reg_write_zero_width(void)
  */
 static int test_reg_write_oob_register(void)
 {
-   struct reg_device dev = {
+   struct reg_dev dev = {
        .reg_width = 32,
        .reg_num   = 3,
        .field_map = NULL,
@@ -135,7 +135,7 @@ static int test_reg_write_oob_register(void)
  */
 static int test_reg_write_first_register(void)
 {
-   struct reg_device dev = {
+   struct reg_dev dev = {
        .reg_width = 32,
        .reg_num   = 4,
        .field_map = NULL,
@@ -163,7 +163,7 @@ static int test_reg_write_first_register(void)
  */
 static int test_reg_write_last_register(void)
 {
-   struct reg_device dev = {
+   struct reg_dev dev = {
        .reg_width = 32,
        .reg_num   = 4,
        .field_map = NULL,
@@ -191,7 +191,7 @@ static int test_reg_write_last_register(void)
  */
 static int test_reg_write_zero_value(void)
 {
-   struct reg_device dev = {
+   struct reg_dev dev = {
        .reg_width = 32,
        .reg_num   = 2,
        .field_map = NULL,
@@ -219,7 +219,7 @@ static int test_reg_write_zero_value(void)
  */
 static int test_reg_write_max_value(void)
 {
-   struct reg_device dev = {
+   struct reg_dev dev = {
        .reg_width = 32,
        .reg_num   = 4,
        .field_map = NULL,
@@ -247,7 +247,7 @@ static int test_reg_write_max_value(void)
  */
 static int test_reg_write_size_max_index(void)
 {
-   struct reg_device dev = {
+   struct reg_dev dev = {
        .reg_width = 32,
        .reg_num   = 4,
        .field_map = NULL,
@@ -268,7 +268,7 @@ static int test_reg_write_size_max_index(void)
  */
 static int test_reg_write_zero_registers(void)
 {
-   struct reg_device dev = {
+   struct reg_dev dev = {
        .reg_width = 32,
        .reg_num   = 0,
        .field_map = NULL,
@@ -290,7 +290,7 @@ static int test_reg_write_zero_registers(void)
 static int test_reg_write_value_too_large_8bit_val(void)
 {
    uint32_t data[1]      = {0};
-   struct reg_device dev = {
+   struct reg_dev dev = {
        .reg_width = 8,
        .reg_num   = 1,
        .field_map = NULL,
@@ -313,7 +313,7 @@ static int test_reg_write_value_too_large_8bit_val(void)
 static int test_reg_write_value_too_large_8bit_inv(void)
 {
    uint32_t data[1]      = {0};
-   struct reg_device dev = {
+   struct reg_dev dev = {
        .reg_width = 8,
        .reg_num   = 1,
        .field_map = NULL,
@@ -342,7 +342,7 @@ static int test_reg_write_value_too_large_8bit_inv(void)
 static int test_reg_write_value_too_large_16bit(void)
 {
    uint32_t data[1]      = {0};
-   struct reg_device dev = {
+   struct reg_dev dev = {
        .reg_width = 16,
        .reg_num   = 1,
        .field_map = NULL,
@@ -371,7 +371,7 @@ static int test_reg_write_value_too_large_16bit(void)
 static int test_reg_write_value_too_large_32bit(void)
 {
    uint32_t data[1]      = {0};
-   struct reg_device dev = {
+   struct reg_dev dev = {
        .reg_width = 32,
        .reg_num   = 1,
        .field_map = NULL,

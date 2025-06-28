@@ -41,7 +41,7 @@ static uint32_t test_read_fn(size_t reg)
 
 static uint32_t test_data[TEST_NUM_REGS];
 
-static struct reg_device test_dev = {
+static struct reg_dev test_dev = {
     .reg_width = 6,
     .reg_num   = TEST_NUM_REGS,
     .field_map = test_dev_map,
@@ -148,7 +148,7 @@ static int test_detect_overlap(void)
 
    uint32_t data[4] = {0};
 
-   struct reg_device dev = {
+   struct reg_dev dev = {
        .reg_width = 6,
        .reg_num   = 4,
        .field_map = map,
@@ -176,7 +176,7 @@ static int test_detect_dupl(void)
 
    uint32_t data[4] = {0};
 
-   struct reg_device dev = {
+   struct reg_dev dev = {
        .reg_width = 6,
        .reg_num   = 2,
        .field_map = map,

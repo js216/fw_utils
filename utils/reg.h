@@ -31,7 +31,7 @@ struct reg_field {
    const uint8_t flags;
 };
 
-struct reg_device {
+struct reg_dev {
    uint8_t reg_width;
    size_t reg_num;
    uint32_t *data;
@@ -46,7 +46,7 @@ struct reg_meta {
    uint64_t *data;
    struct reg_field **base_maps;
    int (*activate)(int id);
-   struct reg_device base;
+   struct reg_dev base;
 };
 
 /**
@@ -77,7 +77,7 @@ struct reg_meta {
  *     #define NUM_REGS 6
  *     uint32_t dev_data[NUM_REGS];
  *
- *     struct reg_device dev = {
+ *     struct reg_dev dev = {
  *        .reg_width = 32,
  *        .reg_num   = NUM_REGS,
  *        .field_map = dev_map,
@@ -126,14 +126,14 @@ struct reg_meta {
  */
 
 /// @func Read register from physical device and update buffer.
-uint32_t reg_read(const struct reg_device *d, size_t reg);
+uint32_t reg_read(const struct reg_dev *d, size_t reg);
 /// @param `d` Device to read from.
 /// @param `reg` Sequential register number.
 /// @return Register value. On failure, return 0.
 /// @endfunc
 
 /// @func Write register to physical device and update buffer.
-int reg_write(struct reg_device *d, size_t reg, uint32_t val);
+int reg_write(struct reg_dev *d, size_t reg, uint32_t val);
 /// @param `d` Device data structure.
 /// @param `reg` Sequential register number.
 /// @param `val` Value to write into the register.
@@ -141,7 +141,7 @@ int reg_write(struct reg_device *d, size_t reg, uint32_t val);
 /// @endfunc
 
 /// @func Bulk import of register data into the device data structure.
-int reg_bulk(struct reg_device *d, const uint32_t *data);
+int reg_bulk(struct reg_dev *d, const uint32_t *data);
 /// @param `d` Device data structure.
 /// @param `data` Data to read from, at least `d->reg_num` words (32 bits each).
 /// If pointer is `NULL`, all the data will be cleared to 0.
@@ -259,7 +259,7 @@ int reg_bulk(struct reg_device *d, const uint32_t *data);
  */
 
 /// @func Check map of register fields for consistency.
-int reg_check(struct reg_device *d);
+int reg_check(struct reg_dev *d);
 /// @param `d` Device data structure to check.
 /// @return 0 on success, $-1$ on failure.
 /// @endfunc
@@ -277,7 +277,7 @@ int reg_check(struct reg_device *d);
  */
 
 /// @func Get the value of a given field from the device buffer.
-uint64_t reg_get(struct reg_device *d, const char *field);
+uint64_t reg_get(struct reg_dev *d, const char *field);
 /// @param `d` Device data structure to read from.
 /// @param `field` Null-terminated field name.
 /// @return Register value. On failure, return 0.
@@ -290,7 +290,7 @@ uint64_t reg_get(struct reg_device *d, const char *field);
  */
 
 /// @func Set the value of a given field on the physical device.
-int reg_set(struct reg_device *d, const char *field, uint64_t val);
+int reg_set(struct reg_dev *d, const char *field, uint64_t val);
 /// @param `d` Device data structure to modify.
 /// @param `val` Value to set in the field.
 /// @param `field` Null-terminated field name.
@@ -301,13 +301,13 @@ int reg_set(struct reg_device *d, const char *field, uint64_t val);
  * @subsection Device Data Structure
  *
  * The register data is stored in an internal data buffer as per the `data`
- * pointer in `struct reg_device`. The buffer must be a contiguous `uint32_t`
+ * pointer in `struct reg_dev`. The buffer must be a contiguous `uint32_t`
  * array, in length at least `reg_num`. The code cannot detect a mismatch
  * between the size of the allocated buffer and `reg_num` and will cause a
  * buffer overrun if the buffer is too smal.
  *
  * To connect the map of register fields with a physical device, two functions
- * need to be defined, with pointers to them stored in `struct reg_device`:
+ * need to be defined, with pointers to them stored in `struct reg_dev`:
  *
  *     uint32_t read_fn(size_t reg);
  *     int write_fn(size_t reg, uint32_t val);
@@ -323,7 +323,7 @@ int reg_set(struct reg_device *d, const char *field, uint64_t val);
 /**
  * @subsection Meta Devices
  *
- * Meta devices extend a physical device, as represented by `struct reg_device`,
+ * Meta devices extend a physical device, as represented by `struct reg_dev`,
  * by allowing a virtually unlimited number of registers to be written and read
  * back. When a meta device detects that the requested field is not found in the
  * currently active register map, it will automatically call `m->activate()` to

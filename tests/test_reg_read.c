@@ -33,7 +33,7 @@ static uint32_t mock_read_fn(size_t reg)
  */
 static int test_valid_read(void)
 {
-   struct reg_device dev = {
+   struct reg_dev dev = {
        .reg_width = 16,
        .reg_num   = 4,
        .read_fn   = mock_read_fn,
@@ -68,7 +68,7 @@ static int test_valid_read(void)
  */
 static int test_reg_index_zero(void)
 {
-   struct reg_device dev = {
+   struct reg_dev dev = {
        .reg_width = 16,
        .reg_num   = 2,
        .read_fn   = mock_read_fn,
@@ -103,7 +103,7 @@ static int test_reg_index_zero(void)
  */
 static int test_reg_width_32_valid(void)
 {
-   struct reg_device dev = {
+   struct reg_dev dev = {
        .reg_width = 32,
        .reg_num   = 1,
        .read_fn   = mock_read_fn,
@@ -132,7 +132,7 @@ static int test_reg_width_32_valid(void)
  */
 static int test_reg_width_1_bit_valid(void)
 {
-   struct reg_device dev = {
+   struct reg_dev dev = {
        .reg_width = 1,
        .reg_num   = 1,
        .read_fn   = mock_read_fn,
@@ -160,7 +160,7 @@ static int test_reg_width_1_bit_valid(void)
  */
 static int test_reg_width_1_bit_invalid(void)
 {
-   struct reg_device dev = {
+   struct reg_dev dev = {
        .reg_width = 1,
        .reg_num   = 1,
        .read_fn   = mock_read_fn,
@@ -188,7 +188,7 @@ static int test_reg_width_1_bit_invalid(void)
  */
 static int test_reg_width_3_valid(void)
 {
-   struct reg_device dev = {
+   struct reg_dev dev = {
        .reg_width = 3,
        .reg_num   = 1,
        .read_fn   = mock_read_fn,
@@ -216,7 +216,7 @@ static int test_reg_width_3_valid(void)
  */
 static int test_reg_width_3_invalid(void)
 {
-   struct reg_device dev = {
+   struct reg_dev dev = {
        .reg_width = 3,
        .reg_num   = 1,
        .read_fn   = mock_read_fn,
@@ -244,7 +244,7 @@ static int test_reg_width_3_invalid(void)
  */
 static int test_reg_width_17_valid(void)
 {
-   struct reg_device dev = {
+   struct reg_dev dev = {
        .reg_width = 17,
        .reg_num   = 1,
        .read_fn   = mock_read_fn,
@@ -272,7 +272,7 @@ static int test_reg_width_17_valid(void)
  */
 static int test_reg_width_17_invalid(void)
 {
-   struct reg_device dev = {
+   struct reg_dev dev = {
        .reg_width = 17,
        .reg_num   = 1,
        .read_fn   = mock_read_fn,
@@ -300,7 +300,7 @@ static int test_reg_width_17_invalid(void)
  */
 static int test_null_device_or_fn(void)
 {
-   struct reg_device dev = {
+   struct reg_dev dev = {
        .reg_width = 16, .reg_num = 4, .data = test_data, .read_fn = NULL};
 
    if (reg_read(NULL, 0) != 0) {
@@ -321,7 +321,7 @@ static int test_null_device_or_fn(void)
  */
 static int test_zero_width(void)
 {
-   struct reg_device dev = {
+   struct reg_dev dev = {
        .reg_width = 0,
        .reg_num   = 4,
        .read_fn   = mock_read_fn,
@@ -341,7 +341,7 @@ static int test_zero_width(void)
  */
 static int test_reg_out_of_range(void)
 {
-   struct reg_device dev = {
+   struct reg_dev dev = {
        .reg_width = 16,
        .reg_num   = 4,
        .read_fn   = mock_read_fn,
@@ -361,7 +361,7 @@ static int test_reg_out_of_range(void)
  */
 static int test_reg_equal_regnum(void)
 {
-   struct reg_device dev = {
+   struct reg_dev dev = {
        .reg_width = 16,
        .reg_num   = 4,
        .read_fn   = mock_read_fn,
@@ -381,7 +381,7 @@ static int test_reg_equal_regnum(void)
  */
 static int test_read_fn_too_many_bits(void)
 {
-   struct reg_device dev = {
+   struct reg_dev dev = {
        .reg_width = 12,
        .reg_num   = 2,
        .read_fn   = mock_read_fn,
@@ -409,7 +409,7 @@ static int test_read_fn_too_many_bits(void)
  */
 static int test_read_fn_edge_bit(void)
 {
-   struct reg_device dev = {
+   struct reg_dev dev = {
        .reg_width = 4,
        .reg_num   = 1,
        .read_fn   = mock_read_fn,

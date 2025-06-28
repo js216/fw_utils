@@ -40,7 +40,7 @@ static int test_reg_read_basic(void)
 
    uint32_t data[3] = {0};
 
-   struct reg_device dev = {
+   struct reg_dev dev = {
        .reg_width = 32,
        .reg_num   = 3,
        .field_map = fields,
@@ -103,7 +103,7 @@ static int test_reg_read_cross_boundary(void)
 
    uint32_t data[3] = {0};
 
-   struct reg_device dev = {
+   struct reg_dev dev = {
        .reg_width = 32,
        .reg_num   = 3,
        .field_map = fields,
@@ -153,7 +153,7 @@ static int test_reg_read_invalid_field(void)
 
    uint32_t data[1] = {0};
 
-   struct reg_device dev = {
+   struct reg_dev dev = {
        .reg_width = 32,
        .reg_num   = 1,
        .field_map = fields,
@@ -208,7 +208,7 @@ static int test_reg_read_null_field(void)
 
    uint32_t data[1] = {0};
 
-   struct reg_device dev = {
+   struct reg_dev dev = {
        .reg_width = 32,
        .reg_num   = 1,
        .field_map = fields,
@@ -243,7 +243,7 @@ static int test_reg_read_missing_read_fn(void)
 
    uint32_t data[1] = {0};
 
-   struct reg_device dev = {
+   struct reg_dev dev = {
        .reg_width = 32,
        .reg_num   = 1,
        .field_map = fields,

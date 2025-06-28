@@ -72,12 +72,12 @@ static uint32_t test_read_fn(size_t reg)
 
 static uint32_t test_dev_data[4][TEST_NUM_REGS] = {0};
 
-static struct reg_device *test_dev(const unsigned int ch)
+static struct reg_dev *test_dev(const unsigned int ch)
 {
    const uint8_t reg_width = 16;
    const uint8_t flags     = REG_DESCEND | REG_MSR_FIRST;
 
-   static struct reg_device test_dev_arr[4] = {
+   static struct reg_dev test_dev_arr[4] = {
        {
         .reg_width = reg_width,
         .reg_num   = TEST_NUM_REGS,

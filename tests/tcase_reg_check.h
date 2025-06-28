@@ -13,7 +13,7 @@
 
 struct map_test {
    const char *desc;
-   struct reg_device dev;
+   struct reg_dev dev;
    struct reg_field map[1001];
    int expect_ok;
 };

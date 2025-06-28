@@ -101,7 +101,7 @@ static inline uint32_t reg_mask32(size_t start, size_t len)
  * @return True if flags are set in either the field or the device, and false
  * if not. False if both d and f are NULL.
  */
-static inline bool reg_flags(const struct reg_device *d,
+static inline bool reg_flags(const struct reg_dev *d,
                              const struct reg_field *f, const uint8_t flags)
 {
    if (d && f)
@@ -116,7 +116,7 @@ static inline bool reg_flags(const struct reg_device *d,
    return false;
 }
 
-uint32_t reg_read(const struct reg_device *d, const size_t reg)
+uint32_t reg_read(const struct reg_dev *d, const size_t reg)
 {
    if (!d || !d->read_fn) {
       ERROR("invalid argument: null pointer or missing read_fn");
@@ -148,7 +148,7 @@ uint32_t reg_read(const struct reg_device *d, const size_t reg)
    return d->data[reg];
 }
 
-int reg_write(struct reg_device *d, size_t reg, const uint32_t val)
+int reg_write(struct reg_dev *d, size_t reg, const uint32_t val)
 {
    if (!d || !d->data || !d->write_fn) {
       ERROR("null pointers in device struct");
@@ -181,7 +181,7 @@ int reg_write(struct reg_device *d, size_t reg, const uint32_t val)
    return 0;
 }
 
-int reg_bulk(struct reg_device *d, const uint32_t *data)
+int reg_bulk(struct reg_dev *d, const uint32_t *data)
 {
    if (!d) {
       ERROR("no device given");
@@ -252,7 +252,7 @@ static uint32_t reg_field_mask(const uint8_t n, const uint8_t f_offs,
  * @return Result, shifted to its position in the field value, or 0 on error.
  * Note that 0 is also a valid return value.
  */
-static uint64_t reg_get_chunk(struct reg_device *const d,
+static uint64_t reg_get_chunk(struct reg_dev *const d,
                               const struct reg_field *const f, const uint8_t n)
 {
    if (!d || !d->data || !f) {
@@ -308,7 +308,7 @@ static uint64_t reg_get_chunk(struct reg_device *const d,
  * @param val Value to be written to the registers.
  * @return 0 on success, -1 on failure.
  */
-static int reg_set_chunk(struct reg_device *const d,
+static int reg_set_chunk(struct reg_dev *const d,
                          const struct reg_field *const f, const uint8_t n,
                          uint64_t val)
 {
@@ -365,7 +365,7 @@ static int reg_check_field_duplicate_names(const struct reg_field *map)
    return 0;
 }
 
-static int reg_clear_buffer(struct reg_device *d)
+static int reg_clear_buffer(struct reg_dev *d)
 {
    if (!d) {
       ERROR("null device");
@@ -384,7 +384,7 @@ static int reg_clear_buffer(struct reg_device *d)
  * @param i Field number to check, from 0 to number of fields.
  * @return 0 on success, -1 on error.
  */
-static int reg_check_field_overlaps(struct reg_device *d, const size_t i)
+static int reg_check_field_overlaps(struct reg_dev *d, const size_t i)
 {
    // write all 1's in field i
    const uint64_t mask = reg_mask64(0, d->field_map[i].width);
@@ -426,7 +426,7 @@ static int reg_check_field_overlaps(struct reg_device *d, const size_t i)
    return 0;
 }
 
-static int reg_check_field_partial_coverage(struct reg_device *d)
+static int reg_check_field_partial_coverage(struct reg_dev *d)
 {
    // write all 1's in all fields
    for (size_t i = 0; d->field_map[i].name; i++) {
@@ -458,7 +458,7 @@ static int reg_check_field_partial_coverage(struct reg_device *d)
    return 0;
 }
 
-int reg_check(struct reg_device *const d)
+int reg_check(struct reg_dev *const d)
 {
    if (!d || !d->reg_num || !d->field_map) {
       ERROR("invalid device pointer or zero reg_num or null field_map");
@@ -511,7 +511,7 @@ int reg_check(struct reg_device *const d)
  * @param field Null-terminated name of the field to find.
  * @return The requested field, or NULL on error.
  */
-static const struct reg_field *reg_find(const struct reg_device *const d,
+static const struct reg_field *reg_find(const struct reg_dev *const d,
                                         const char *const field)
 {
    if (!d || !d->data || !field || !d->field_map) {
@@ -562,7 +562,7 @@ static const struct reg_field *reg_find(const struct reg_device *const d,
 }
 
 
-uint64_t reg_get(struct reg_device *const d, const char *const field)
+uint64_t reg_get(struct reg_dev *const d, const char *const field)
 {
    if (!d || !d->data || !d->field_map || !field) {
       ERROR("invalid argument: null pointers in dev");
@@ -584,7 +584,7 @@ uint64_t reg_get(struct reg_device *const d, const char *const field)
    return val;
 }
 
-int reg_set(struct reg_device *const d, const char *const field,
+int reg_set(struct reg_dev *const d, const char *const field,
             const uint64_t val)
 {
    if (!d || !d->data || !field || !d->write_fn) {

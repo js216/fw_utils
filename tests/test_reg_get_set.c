@@ -46,7 +46,7 @@ static int mock_update_fn(size_t reg, uint32_t val)
 static int test_reg_set_get_foo(void)
 {
    uint32_t data[4]      = {0};
-   struct reg_device dev = {.reg_width = 32,
+   struct reg_dev dev = {.reg_width = 32,
                             .reg_num   = 4,
                             .field_map = test_fields,
                             .data      = data,
@@ -86,7 +86,7 @@ static int test_reg_set_get_foo(void)
 static int test_reg_set_get_bar(void)
 {
    uint32_t data[4]      = {0};
-   struct reg_device dev = {.reg_width = 32,
+   struct reg_dev dev = {.reg_width = 32,
                             .reg_num   = 4,
                             .field_map = test_fields,
                             .data      = data,
@@ -118,7 +118,7 @@ static int test_reg_set_get_bar(void)
 static int test_reg_set_get_wide(void)
 {
    uint32_t data[4]      = {0};
-   struct reg_device dev = {.reg_width = 32,
+   struct reg_dev dev = {.reg_width = 32,
                             .reg_num   = 4,
                             .field_map = test_fields,
                             .data      = data,
@@ -151,7 +151,7 @@ static int test_reg_set_get_wide(void)
 static int test_reg_set_get_across(void)
 {
    uint32_t data[4]      = {0};
-   struct reg_device dev = {.reg_width = 32,
+   struct reg_dev dev = {.reg_width = 32,
                             .reg_num   = 4,
                             .field_map = test_fields,
                             .data      = data,
@@ -178,7 +178,7 @@ static int test_reg_set_get_across(void)
 static int test_reg_set_invalid_name(void)
 {
    uint32_t data[2]      = {0};
-   struct reg_device dev = {.reg_width = 32,
+   struct reg_dev dev = {.reg_width = 32,
                             .reg_num   = 2,
                             .field_map = test_fields,
                             .data      = data,
@@ -200,7 +200,7 @@ static int test_reg_set_invalid_name(void)
 static int test_reg_set_too_large(void)
 {
    uint32_t data[1]      = {0};
-   struct reg_device dev = {.reg_width = 32,
+   struct reg_dev dev = {.reg_width = 32,
                             .reg_num   = 1,
                             .field_map = test_fields,
                             .data      = data,
@@ -217,7 +217,7 @@ static int test_reg_set_too_large(void)
 static int test_update_fn_failure(void)
 {
    uint32_t data[2]      = {0};
-   struct reg_device dev = {
+   struct reg_dev dev = {
        .reg_width = 32,
        .reg_num   = 2,
        .field_map = test_fields,
@@ -245,7 +245,7 @@ static int test_field_spanning_regs_at_zero_offset(void)
        {NULL,         0, 0, 0,  0}
    };
    uint32_t data[2]      = {0};
-   struct reg_device dev = {.reg_width = 32,
+   struct reg_dev dev = {.reg_width = 32,
                             .reg_num   = 2,
                             .field_map = fields,
                             .data      = data,
@@ -279,7 +279,7 @@ static int test_field_max_width(void)
        {NULL,    0, 0, 0,  0}
    };
    uint32_t data[2]      = {0}; // two 32-bit regs to hold 64 bits
-   struct reg_device dev = {.reg_width = 32,
+   struct reg_dev dev = {.reg_width = 32,
                             .reg_num   = 2,
                             .field_map = fields,
                             .data      = data,
@@ -314,7 +314,7 @@ static int test_zero_width_field(void)
        {NULL,   0, 0, 0, 0}
    };
    uint32_t data[1]      = {0};
-   struct reg_device dev = {.reg_width = 32,
+   struct reg_dev dev = {.reg_width = 32,
                             .reg_num   = 1,
                             .field_map = fields,
                             .data      = data,
@@ -345,7 +345,7 @@ static int test_field_out_of_range(void)
        {NULL,           0,  0, 0, 0}
    };
    uint32_t data[2]      = {0};
-   struct reg_device dev = {.reg_width = 32,
+   struct reg_dev dev = {.reg_width = 32,
                             .reg_num   = 2,
                             .field_map = fields,
                             .data      = data,
@@ -371,7 +371,7 @@ static int test_field_out_of_range(void)
 static int test_null_pointers(void)
 {
    uint32_t data[1]      = {0};
-   struct reg_device dev = {.reg_width = 32,
+   struct reg_dev dev = {.reg_width = 32,
                             .reg_num   = 1,
                             .field_map = test_fields,
                             .data      = data,
@@ -413,7 +413,7 @@ static int test_field_at_register_end(void)
        {NULL,   0, 0,  0, 0}
    };
    uint32_t data[1]      = {0};
-   struct reg_device dev = {.reg_width = 32,
+   struct reg_dev dev = {.reg_width = 32,
                             .reg_num   = 1,
                             .field_map = fields,
                             .data      = data,
@@ -452,7 +452,7 @@ static int test_field_highest_bit(void)
        {NULL,  0, 0,  0, 0}
    };
    uint32_t data[1]      = {0};
-   struct reg_device dev = {.reg_width = 32,
+   struct reg_dev dev = {.reg_width = 32,
                             .reg_num   = 1,
                             .field_map = fields,
                             .data      = data,
@@ -490,7 +490,7 @@ static int test_set_no_change(void)
        {NULL,    0, 0, 0,  0}
    };
    uint32_t data[1]      = {0x00001234};
-   struct reg_device dev = {.reg_width = 32,
+   struct reg_dev dev = {.reg_width = 32,
                             .reg_num   = 1,
                             .field_map = fields,
                             .data      = data,
@@ -524,7 +524,7 @@ static int test_field_starts_late(void)
        {NULL,   0, 0, 0,  0}
    };
    uint32_t data[4]      = {0};
-   struct reg_device dev = {.reg_width = 32,
+   struct reg_dev dev = {.reg_width = 32,
                             .reg_num   = 4,
                             .field_map = fields,
                             .data      = data,
@@ -560,7 +560,7 @@ static int test_field_ends_early(void)
        {NULL,    0, 0, 0,  0}
    };
    uint32_t data[3]      = {0};
-   struct reg_device dev = {.reg_width = 32,
+   struct reg_dev dev = {.reg_width = 32,
                             .reg_num   = 3, // only reg 0 is used
                             .field_map = fields,
                             .data      = data,
@@ -597,7 +597,7 @@ static int test_field_with_gap_registers(void)
        {NULL,     0, 0, 0,  0}
    };
    uint32_t data[3]      = {0};
-   struct reg_device dev = {.reg_width = 32,
+   struct reg_dev dev = {.reg_width = 32,
                             .reg_num   = 3,
                             .field_map = fields,
                             .data      = data,
@@ -649,7 +649,7 @@ static int test_maxfield_unaligned_start(void)
        {NULL,       0, 0, 0,  0}
    };
    uint32_t data[3]      = {0};
-   struct reg_device dev = {.reg_width = 32,
+   struct reg_dev dev = {.reg_width = 32,
                             .reg_num   = 3,
                             .field_map = fields,
                             .data      = data,
@@ -696,7 +696,7 @@ static int test_reg_get_set_valid(void)
    };
 
    uint32_t data[3]      = {0};
-   struct reg_device dev = {
+   struct reg_dev dev = {
        .reg_width = 32,
        .reg_num   = 3,
        .field_map = fields,
@@ -759,7 +759,7 @@ static int test_reg_set_invalid(void)
    };
 
    uint32_t data[2]      = {0};
-   struct reg_device dev = {
+   struct reg_dev dev = {
        .reg_width = 32,
        .reg_num   = 2,
        .field_map = fields,

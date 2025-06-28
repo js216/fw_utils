@@ -44,10 +44,10 @@ static int test_reg_check_map(const struct map_test *mt, size_t len)
       else
          debug_silent(true);
 
-      const struct reg_device *dev = &mt[i].dev;
+      const struct reg_dev *dev = &mt[i].dev;
 
       // patch in pointers, unless null test
-      struct reg_device patched = *dev;
+      struct reg_dev patched = *dev;
       if (mt[i].desc[0] != 'n') { // crude check for "null device pointer"
          patched.field_map = mt[i].map;
          patched.data      = data;
