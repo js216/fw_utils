@@ -8,9 +8,9 @@ DIRS := utils tests
 SRC := $(wildcard $(addsuffix /*.c,$(DIRS)))
 OBJ := $(patsubst %.c,build/%.o,$(SRC))
 
-.PHONY: all doc clean_doc test clean
+.PHONY: all test doc clean_doc clean
 
-all: test doc
+all: doc test
 
 # Tests
 

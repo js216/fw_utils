@@ -541,38 +541,18 @@ static const struct reg_field *reg_find(const struct reg_device *const d,
       return NULL;
    }
 
-   return f;
-}
-
-/**
- * @brief Find range of registers occupied by given field.
- *
- * @param num_regs (Output) Number of registers occupied by this field.
- * @param d Pointer to the device to check for flags, or NULL to skip.
- * @param field Null-terminated name of the field to find.
- * @return The field if found, NULL on error.
- */
-static const struct reg_field *reg_field_range(size_t *num_regs,
-                                               const struct reg_device *const d,
-                                               const char *const field)
-{
-   const struct reg_field *f = reg_find(d, field);
-   if (!f) {
-      ERROR("cannot find the requested field");
-      return NULL;
-   }
-
-   *num_regs = reg_cdiv(f->offs + f->width, d->reg_width);
+   // check field does not extend outside the device
+   const size_t num_regs = reg_cdiv(f->offs + f->width, d->reg_width);
 
    if (reg_flags(d, f, REG_DESCEND)) {
-      if (f->reg + 1 < *num_regs) {
+      if (f->reg + 1 < num_regs) {
          ERROR("too many descending registers");
          return NULL;
       }
    }
 
    else { // ascending
-      if (f->reg + *num_regs > d->reg_num) {
+      if (f->reg + num_regs > d->reg_num) {
          ERROR("too many ascending registers");
          return NULL;
       }
@@ -581,6 +561,7 @@ static const struct reg_field *reg_field_range(size_t *num_regs,
    return f;
 }
 
+
 uint64_t reg_get(struct reg_device *const d, const char *const field)
 {
    if (!d || !d->data || !d->field_map || !field) {
@@ -588,8 +569,7 @@ uint64_t reg_get(struct reg_device *const d, const char *const field)
       return 0;
    }
 
-   size_t num_regs           = 0;
-   const struct reg_field *f = reg_field_range(&num_regs, d, field);
+   const struct reg_field *f = reg_find(d, field);
    if (!f) {
       ERROR("invalid field");
       return 0;
@@ -597,6 +577,7 @@ uint64_t reg_get(struct reg_device *const d, const char *const field)
 
    // assemble chunks into a single number
    uint64_t val = 0;
+   const size_t num_regs = reg_cdiv(f->offs + f->width, d->reg_width);
    for (size_t n = 0; n < num_regs; n++)
       val |= reg_get_chunk(d, f, n);
 
@@ -611,8 +592,7 @@ int reg_set(struct reg_device *const d, const char *const field,
       return -1;
    }
 
-   size_t num_regs           = 0;
-   const struct reg_field *f = reg_field_range(&num_regs, d, field);
+   const struct reg_field *f = reg_find(d, field);
    if (!f) {
       ERROR("invalid field");
       return -1;
@@ -623,6 +603,7 @@ int reg_set(struct reg_device *const d, const char *const field,
       return -1;
    }
 
+   const size_t num_regs = reg_cdiv(f->offs + f->width, d->reg_width);
    for (size_t n = 0; n < num_regs; n++) {
       // invert order of register writes if REG_MSR_FIRST is set
       size_t n_eff = n;
