@@ -50,7 +50,6 @@ struct reg_meta {
 };
 
 /**
- * \newpage
  * *Method summary:*
  * @allfunc
  * Please refer to the detailed function documentation in the following pages.
@@ -297,6 +296,29 @@ int reg_set(struct reg_device *d, const char *field, uint64_t val);
 /// @param `field` Null-terminated field name.
 /// @return 0 on success, $-1$ on failure.
 /// @endfunc
+
+/**
+ * @subsection Device Data Structure
+ *
+ * The register data is stored in an internal data buffer as per the `data`
+ * pointer in `struct reg_device`. The buffer must be a contiguous `uint32_t`
+ * array, in length at least `reg_num`. The code cannot detect a mismatch
+ * between the size of the allocated buffer and `reg_num` and will cause a
+ * buffer overrun if the buffer is too smal.
+ *
+ * To connect the map of register fields with a physical device, two functions
+ * need to be defined, with pointers to them stored in `struct reg_device`:
+ *
+ *     uint32_t read_fn(size_t reg);
+ *     int write_fn(size_t reg, uint32_t val);
+ *
+ * These handle the hardware specific procedures to get the data in and out of
+ * the devices. Their behavior is arbitrary. For example, if no hardware I/O is
+ * needed, returning zero is sufficient:
+ *
+ *     uint32_t test_read_fn(size_t reg) {return 0;}
+ *     int test_write_fn(size_t reg, uint32_t val) {return 0;}
+ */
 
 /**
  * @subsection Meta Devices
