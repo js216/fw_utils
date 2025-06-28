@@ -13,7 +13,7 @@ compiler, so it can be readily embedded in other projects. You can either
 directly copy the files of interest, just the `utils/` directory, or include the
 entire repository.
 
-To generate PDF documentation and run tests, run
+To generate PDF documentation and run tests:
 
     make doc # need python3 and pdflatex
     make tests # optional flag: ASAN=1

@@ -548,13 +548,11 @@ static const struct reg_field *reg_find(const struct reg_device *const d,
  * @brief Find range of registers occupied by given field.
  *
  * @param num_regs (Output) Number of registers occupied by this field.
- * @param reg_start (Output) The lowest-index register occupied by this field.
  * @param d Pointer to the device to check for flags, or NULL to skip.
  * @param field Null-terminated name of the field to find.
  * @return The field if found, NULL on error.
  */
 static const struct reg_field *reg_field_range(size_t *num_regs,
-                                               size_t *reg_start,
                                                const struct reg_device *const d,
                                                const char *const field)
 {
@@ -571,12 +569,10 @@ static const struct reg_field *reg_field_range(size_t *num_regs,
          ERROR("too many descending registers");
          return NULL;
       }
-      *reg_start = f->reg - *num_regs + 1;
    }
 
    else { // ascending
-      *reg_start = f->reg;
-      if (*reg_start + *num_regs > d->reg_num) {
+      if (f->reg + *num_regs > d->reg_num) {
          ERROR("too many ascending registers");
          return NULL;
       }
@@ -593,8 +589,7 @@ uint64_t reg_get(struct reg_device *const d, const char *const field)
    }
 
    size_t num_regs           = 0;
-   size_t reg_start          = 0;
-   const struct reg_field *f = reg_field_range(&num_regs, &reg_start, d, field);
+   const struct reg_field *f = reg_field_range(&num_regs, d, field);
    if (!f) {
       ERROR("invalid field");
       return 0;
@@ -617,8 +612,7 @@ int reg_set(struct reg_device *const d, const char *const field,
    }
 
    size_t num_regs           = 0;
-   size_t reg_start          = 0;
-   const struct reg_field *f = reg_field_range(&num_regs, &reg_start, d, field);
+   const struct reg_field *f = reg_field_range(&num_regs, d, field);
    if (!f) {
       ERROR("invalid field");
       return -1;
