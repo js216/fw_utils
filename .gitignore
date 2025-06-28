@@ -1,0 +1,11 @@
+*.swp
+
+# build directories
+build
+
+# documentation
+*.aux
+*.log
+*.toc
+doc/utils
+doc/main.pdf

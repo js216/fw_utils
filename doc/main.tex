@@ -1,0 +1,56 @@
+\documentclass{article}
+
+% Packages
+\usepackage{listings}
+\usepackage{xcolor}
+
+% Page layout and format
+\usepackage[letterpaper,left=1.75in,right=1.75in,top=1.7in,bottom=1.7in]{geometry}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{1ex}
+
+% Code listings
+\lstdefinestyle{C99}{
+   language=C,
+   basicstyle=\ttfamily,
+   basewidth=0.49em,
+   numberstyle=\tiny\color{gray},
+   stepnumber=1,
+   numbersep=10pt,
+   showstringspaces=false,
+   breaklines=true,
+   tabsize=8,
+   keywordstyle=\color{blue},
+   commentstyle=\color{gray},
+   stringstyle=\color{teal},
+   backgroundcolor=\color{white},
+   morekeywords={size_t,uint8_t,uint16_t,uint32_t,uint64_t},
+}
+
+% Function definition environment
+\newenvironment{function}[1]
+    {\begin{minipage}{\textwidth}
+       \medskip$\triangleright$ \textit{#1}
+    }
+    %
+    {
+    \end{minipage}
+    }
+
+% API section title
+\newcommand{\api}[1]{
+   \par\vspace{1.5em} \nobreak
+   \vbox{\textbf{Function Documentation}#1\par}
+   \nobreak\vspace{0.0em}
+}
+
+% Special commands
+\newcommand{\file}[1]{\section{#1}}
+\newcommand{\param}[1]{\textit{Param:} {#1}}
+\newcommand{\return}[1]{\textit{Return:} {#1}\medskip}
+
+\begin{document}
+
+\include{utils/reg.h}
+
+\end{document}
