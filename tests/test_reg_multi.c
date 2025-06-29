@@ -131,32 +131,38 @@ static struct reg_dev *test_dev(const unsigned int ch)
 
 static int test_init_one(const unsigned int ch, const uint32_t pattern)
 {
+   struct reg_dev *dev = test_dev(ch);
+   if (!dev) {
+      TEST_FAIL("cannot get device");
+      return -1;
+   }
+
    // initialize the registers data structure
-   if (reg_check(test_dev(ch))) {
+   if (reg_check(dev)) {
       TEST_FAIL("reg_check failed");
       return -1;
    }
 
    // write test pattern into the register
    for (size_t i = 0; i < TEST_NUM_REGS; i++) {
-      if (reg_write(test_dev(ch), i, pattern)) {
+      if (reg_write(dev, i, pattern)) {
          TEST_FAIL("test register write failed at i=%zu", i);
          return -1;
       }
 
       // disable writing to physical device for the readback
-      const uint16_t flags = test_dev(ch)->flags;
-      test_dev(ch)->flags |= REG_NOCOMM;
+      const uint16_t flags = dev->flags;
+      dev->flags |= REG_NOCOMM;
 
       // readback
-      const uint32_t val = reg_read(test_dev(ch), i);
+      const uint32_t val = reg_read(dev, i);
       if (val != pattern) {
          TEST_FAIL("dev %d: register %zu contains 0x%x", ch, i, val);
          return -1;
       }
 
       // restore original flags
-      test_dev(ch)->flags = flags;
+      dev->flags = flags;
    }
 
    return 0;
@@ -175,14 +181,20 @@ static int test_init(void)
 
    // make sure all registers contain the correct pattern
    for (int ch = 0; ch < 4; ch++) {
+      struct reg_dev *dev = test_dev(ch);
+      if (!dev) {
+         TEST_FAIL("cannot get device");
+         return -1;
+      }
+
       // disable writing to physical device
       // (otherwise reg_read would call phyiscal device read_fn)
-      const uint16_t flags = test_dev(ch)->flags;
-      test_dev(ch)->flags |= REG_NOCOMM;
+      const uint16_t flags = dev->flags;
+      dev->flags |= REG_NOCOMM;
 
       // check values of all registers
       for (size_t i = 0; i < TEST_NUM_REGS; i++) {
-         const uint32_t val = reg_read(test_dev(ch), i);
+         const uint32_t val = reg_read(dev, i);
          if (val != pattern) {
             TEST_FAIL("dev %d: register %zu contains 0x%x", ch, i, val);
             return -1;
@@ -190,7 +202,7 @@ static int test_init(void)
       }
 
       // restore original flags
-      test_dev(ch)->flags = flags;
+      dev->flags = flags;
    }
 
    return 0;
@@ -198,21 +210,27 @@ static int test_init(void)
 
 static int test_rw32(int ch, const uint32_t pattern)
 {
+   struct reg_dev *dev = test_dev(ch);
+   if (!dev) {
+      TEST_FAIL("cannot get device");
+      return -1;
+   }
+
    const uint32_t lsb = pattern & 0xFFFFU;
    const uint32_t msb = pattern >> 16U;
 
-   if (reg_set(test_dev(ch), "PLL_NUM", pattern)) {
+   if (reg_set(dev, "PLL_NUM", pattern)) {
       TEST_FAIL("reg_set(PLL_NUM) failed");
       return -1;
    }
 
-   const uint32_t r42 = test_dev(ch)->data[42];
+   const uint32_t r42 = dev->data[42];
    if (r42 != msb) {
       TEST_FAIL("data[42] 0x%" PRIx32 ", should be 0x%" PRIx32, r42, msb);
       return -1;
    }
 
-   const uint32_t r43 = test_dev(ch)->data[43];
+   const uint32_t r43 = dev->data[43];
    if (r43 != lsb) {
       TEST_FAIL("data[43] 0x%" PRIx32 ", should be 0x%" PRIx32, r43, lsb);
       return -1;
@@ -232,7 +250,7 @@ static int test_rw32(int ch, const uint32_t pattern)
       return -1;
    }
 
-   if (reg_get(test_dev(ch), "PLL_NUM") != pattern) {
+   if (reg_get(dev, "PLL_NUM") != pattern) {
       TEST_FAIL("reg_get(foo) returned wrong value");
       return -1;
    }

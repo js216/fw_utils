@@ -25,6 +25,11 @@ To generate PDF documentation and run tests:
     make test # optional flags: ASAN=1 FANALYZER=1
     make check # need clang-format, intercept-build, clang-tidy, cppcheck, perl
 
+### To do
+
+- write tests for mutex protection
+- change `test_reg_multi.c` to use `d->arg` to prevent code duplication
+
 ### License
 
 Copyright 2025 Stanford Research Systems, Inc.
