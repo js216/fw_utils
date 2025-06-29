@@ -32,7 +32,9 @@ doc/main.pdf: doc/main.tex doc/utils/reg.h.tex
 
 doc/%.tex: % scripts/c2tex.py
 	mkdir -p $(dir $@)
-	python3 scripts/c2tex.py $< > $@
+	echo -n '\\' > $@
+	git log -n 1 --pretty=format:"commit{$<}{%ad}{%H}" -- $< >> $@
+	python3 scripts/c2tex.py $< >> $@
 
 # Testing and linting
 
