@@ -15,39 +15,49 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#define REG_READONLY (1U << 0U)
+#define REG_READONLY  (1U << 0U)
 #define REG_WRITEONLY (1U << 1U)
-#define REG_VOLATILE (1U << 2U)
-#define REG_NOCOMM (1U << 3U)
-#define REG_ALIAS (1U << 4U)
-#define REG_DESCEND (1U << 5U)
+#define REG_VOLATILE  (1U << 2U)
+#define REG_NOCOMM    (1U << 3U)
+#define REG_ALIAS     (1U << 4U)
+#define REG_DESCEND   (1U << 5U)
 #define REG_MSR_FIRST (1U << 6U)
 
 struct reg_field {
-  const char *name;
-  const size_t reg;
-  const uint8_t offs;
-  const uint8_t width;
-  const uint16_t flags;
+   const char *name;
+   const size_t reg;
+   const uint8_t offs;
+   const uint8_t width;
+   const uint16_t flags;
 };
 
 struct reg_dev {
-  uint16_t flags;
-  uint8_t reg_width;
-  size_t reg_num;
-  const struct reg_field *field_map;
-  int arg;
-  uint32_t (*read_fn)(int arg, size_t reg);
-  int (*write_fn)(int arg, size_t reg, uint32_t val);
-  uint32_t *data;
+   uint16_t flags;
+
+   // register map
+   uint8_t reg_width;
+   size_t reg_num;
+   const struct reg_field *field_map;
+
+   // physical read/write
+   int arg;
+   uint32_t (*read_fn)(int arg, size_t reg);
+   int (*write_fn)(int arg, size_t reg, uint32_t val);
+
+   // data buffer
+   uint32_t *data;
+   void *mutex;
+   int (*lock_fn)(void *mutex);
+   int (*unlock_fn)(void *mutex);
+   int lock_count;
 };
 
 struct reg_meta {
-  const char **fields;
-  uint64_t *data;
-  struct reg_field **base_maps;
-  int (*activate)(int id);
-  struct reg_dev base;
+   const char **fields;
+   uint64_t *data;
+   struct reg_field **base_maps;
+   int (*activate)(int id);
+   struct reg_dev base;
 };
 
 /**
@@ -113,13 +123,20 @@ struct reg_meta {
  * present in the register map. Instead, they are intended for programmatic use,
  * such as in a loop to write default values to all registers at once.
  *
- * To prevent reading or writing from the underlying physical device, set the
- * `REG_NOCOMM` device flag before calling `reg_read()` and `reg_write()`. In
- * that case, the values will be read and written to the data buffer only.
+ * To prevent reading or writing from the underlying physical device, the device
+ * may set the `REG_NOCOMM` flag before calling `reg_read()` and `reg_write()`.
+ * In that case, the values will be read and written to the data buffer only.
  *
  * Note that multi-byte registers are stored native-endian and no conversions
  * are done when retrieving the data. This should not pose problems so long as
- * storing and retrieving are done by devices having the same endianness.
+ * storing and retrieving the data from the buffer are done by processors having
+ * the same endianness. Typically, the same processor will execute both
+ * operations. At any rate, the conversion from the buffer representation to the
+ * format required by the target device is implemented in device-specific
+ * `read_fn` and `write_fn`; these are responsible for physical data transfer
+ * and thus determine the final endianness or even the bit order. See the
+ * section below for more details about the Device Data Structure, which defines
+ * the hardware-specific register access methods.
  */
 
 /**
@@ -127,7 +144,7 @@ struct reg_meta {
  */
 
 /// @func Read register from physical device and update buffer.
-uint32_t reg_read(const struct reg_dev *d, size_t reg);
+uint32_t reg_read(struct reg_dev *d, size_t reg);
 /// @param `d` Device to read from.
 /// @param `reg` Sequential register number.
 /// @return Register value. On failure, return 0.
@@ -150,8 +167,67 @@ int reg_bulk(struct reg_dev *d, const uint32_t *data);
 /// @endfunc
 
 /**
- * After import, all the fields are assumed to be "clean", i.e. up-to-date with
+ * After import, all the fields are assumed to be "clean", i.e.\ up-to-date with
  * the physical device. Thus, `reg_bulk()` does not call `d->write_fn()`.
+ */
+
+/**
+ * @subsection Device Data Structure
+ *
+ * A device is configured by filling the members of `struct reg_dev`. All
+ * members must be set to appropriate values.
+ *
+ * @subsubsection Data Buffer
+ *
+ * The register data is stored in an internal data buffer as per the `data`
+ * pointer in `struct reg_dev`. The buffer must be a contiguous array of
+ * `uint32_t` values, in length at least `reg_num`. The code cannot detect a
+ * mismatch between the size of the allocated buffer and `reg_num` and will
+ * cause a buffer overrun if the buffer is too small for the given `reg_num`.
+ *
+ * In a multi-threaded program, some form of synchronization will be required to
+ * prevent interleaved write calls from corrupting the data buffer. To this end,
+ * the data structure provides space to store a pointer to a `mutex`, which will
+ * be passed as argument to the `lock_fn` and `unlock_fn` functions. These
+ * functions will be called for each field (but not register!) access, either
+ * get or set. They shall return 0 if the locking/unlocking succeeded, and $-1$
+ * otherwise.
+ *
+ * Beware that register access functions `reg_read()` and `reg_write()` do not
+ * make use of locking. Locking needs to be done at the level where atomic
+ * access is desired. Since field access is implemented on top of register
+ * access, the field access is protected so fields spanning across several
+ * registers do not get corrupted.
+ *
+ * If either one of the `lock_fn` and `unlock_fn` is provided, the other one
+ * should be as well to prevent a situation where a mutex is locked and never
+ * released, or the other way around. This requirement is also enforced by
+ * `reg_check()`. However, if locking is not needed, both function pointers can
+ * be `NULL`.
+ *
+ * @subsubsection Physical Read and Write
+ *
+ * To connect the map of register fields with a physical device, two functions
+ * need to be defined, with pointers to them stored in `struct reg_dev`:
+ *
+ *     uint32_t read_fn(size_t reg);
+ *     int write_fn(size_t reg, uint32_t val);
+ *
+ * These handle the hardware specific procedures to get the data in and out of
+ * the devices. Their behavior is arbitrary. For example, if no hardware I/O is
+ * needed, returning zero is sufficient:
+ *
+ *     uint32_t test_read_fn(size_t reg) {return 0;}
+ *     int test_write_fn(size_t reg, uint32_t val) {return 0;}
+ *
+ * Typically, the functions will reformat the register value in some way and
+ * write it to a processor-specific address, where a hardware communication
+ * peripheral can pick the data up. For example, the function may reorder the
+ * bits to be MSB first, then write to the relevant SPI register for transfer.
+ *
+ * The `write_fn` shall return 0 on success and $-1$ on error. There is no
+ * requirement for the `read_fn` to signal errors, but typically a 0 value
+ * should be returned on errors.
  */
 
 /**
@@ -297,29 +373,6 @@ int reg_set(struct reg_dev *d, const char *field, uint64_t val);
 /// @param `field` Null-terminated field name.
 /// @return 0 on success, $-1$ on failure.
 /// @endfunc
-
-/**
- * @subsection Device Data Structure
- *
- * The register data is stored in an internal data buffer as per the `data`
- * pointer in `struct reg_dev`. The buffer must be a contiguous `uint32_t`
- * array, in length at least `reg_num`. The code cannot detect a mismatch
- * between the size of the allocated buffer and `reg_num` and will cause a
- * buffer overrun if the buffer is too smal.
- *
- * To connect the map of register fields with a physical device, two functions
- * need to be defined, with pointers to them stored in `struct reg_dev`:
- *
- *     uint32_t read_fn(size_t reg);
- *     int write_fn(size_t reg, uint32_t val);
- *
- * These handle the hardware specific procedures to get the data in and out of
- * the devices. Their behavior is arbitrary. For example, if no hardware I/O is
- * needed, returning zero is sufficient:
- *
- *     uint32_t test_read_fn(size_t reg) {return 0;}
- *     int test_write_fn(size_t reg, uint32_t val) {return 0;}
- */
 
 /**
  * @subsection Meta Devices

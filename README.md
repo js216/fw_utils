@@ -22,7 +22,7 @@ entire repository.
 To generate PDF documentation and run tests:
 
     make doc # need python3 and pdflatex
-    make tests # optional flags: ASAN=1 FANALYZER=1
+    make test # optional flags: ASAN=1 FANALYZER=1
     make check # need clang-format, intercept-build, clang-tidy, cppcheck, perl
 
 ### License
