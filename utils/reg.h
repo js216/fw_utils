@@ -92,9 +92,9 @@ struct reg_meta {
  *        .reg_width = 32,
  *        .reg_num   = NUM_REGS,
  *        .field_map = dev_map,
- *        .data      = dev_data,
  *        .read_fn   = dev_read_fn,
  *        .write_fn  = dev_write_fn,
+ *        .data      = dev_data,
  *     };
  *
  * To set the value of a field, update the buffer, and write the register(s)
@@ -204,26 +204,33 @@ int reg_bulk(struct reg_dev *d, const uint32_t *data);
  * released, or the other way around. This requirement is also enforced by
  * `reg_check()`. However, if locking is not needed, both function pointers can
  * be `NULL`.
- *
+ */
+
+/**
  * @subsubsection Physical Read and Write
  *
  * To connect the map of register fields with a physical device, two functions
  * need to be defined, with pointers to them stored in `struct reg_dev`:
  *
- *     uint32_t read_fn(size_t reg);
- *     int write_fn(size_t reg, uint32_t val);
+ *     uint32_t read_fn(int arg, size_t reg);
+ *     int write_fn(int arg, size_t reg, uint32_t val);
  *
  * These handle the hardware specific procedures to get the data in and out of
  * the devices. Their behavior is arbitrary. For example, if no hardware I/O is
  * needed, returning zero is sufficient:
  *
- *     uint32_t test_read_fn(size_t reg) {return 0;}
- *     int test_write_fn(size_t reg, uint32_t val) {return 0;}
+ *     uint32_t test_read_fn(int arg, size_t reg) {return 0;}
+ *     int test_write_fn(int arg, size_t reg, uint32_t val) {return 0;}
  *
  * Typically, the functions will reformat the register value in some way and
  * write it to a processor-specific address, where a hardware communication
  * peripheral can pick the data up. For example, the function may reorder the
  * bits to be MSB first, then write to the relevant SPI register for transfer.
+ *
+ * In case several similar or devices are needed, they can be distinguished by
+ * means of the `arg` member in `struct reg_dev`. The code will pass `arg` to
+ * `read_fn` and `write_fn` without any processing or checking. The `arg` can
+ * have any value, such as the sequential number of an output channel.
  *
  * The `write_fn` shall return 0 on success and $-1$ on error. There is no
  * requirement for the `read_fn` to signal errors, but typically a 0 value
