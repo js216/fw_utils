@@ -13,9 +13,9 @@
 #include <stdbool.h>
 
 #define ERROR(x)                                                               \
-   do {                                                                        \
-      debug_error(__func__, __FILE__, __LINE__, x);                            \
-   } while (0)
+  do {                                                                         \
+    debug_error(__func__, __FILE__, __LINE__, x);                              \
+  } while (0)
 
 /**
  * @brief Set error callback function.

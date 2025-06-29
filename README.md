@@ -1,10 +1,16 @@
 # Firmware utilities
 
 This repository is a collection of small, general purpose modules useful in
-development of firmware. The modules include:
+the development of firmware. The modules include:
 
 - `debug.c`: Callback-based error handling
+- `snprintf.c`: Portable `printf`-like functions
 - `reg.c`: Register representation and handling
+
+In addition, the following helpful scripts are included:
+
+- `c2tex.py`: convert C source code into a LaTeX file
+- `colorize.pl`: add colors to the output of Cppcheck
 
 ### Getting started
 
@@ -16,7 +22,8 @@ entire repository.
 To generate PDF documentation and run tests:
 
     make doc # need python3 and pdflatex
-    make tests # optional flag: ASAN=1
+    make tests # optional flags: ASAN=1 FANALYZER=1
+    make check # need clang-format, intercept-build, clang-tidy, cppcheck, perl
 
 ### License
 

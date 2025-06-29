@@ -1,9 +1,11 @@
 # SPDX-License-Identifier: MIT
 """
-c2tex.py - Convert C source files to LaTeX documentation with syntax highlighting
+c2tex.py - Convert C source files to LaTeX documentation with syntax
+highlighting
 
-This program converts C source files into LaTeX source that includes syntax-highlighted
-code listings and LaTeX-formatted documentation extracted from special comments.
+This program converts C source files into LaTeX source that includes
+syntax-highlighted code listings and LaTeX-formatted documentation extracted
+from special comments.
 
 Author: Jakob Kastelic
 Copyright (c) 2025 Stanford Research Systems, Inc.

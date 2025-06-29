@@ -15,38 +15,39 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#define REG_READONLY  (1U << 0U)
+#define REG_READONLY (1U << 0U)
 #define REG_WRITEONLY (1U << 1U)
-#define REG_VOLATILE  (1U << 2U)
-#define REG_NOCOMM    (1U << 3U)
-#define REG_ALIAS     (1U << 4U)
-#define REG_DESCEND   (1U << 5U)
+#define REG_VOLATILE (1U << 2U)
+#define REG_NOCOMM (1U << 3U)
+#define REG_ALIAS (1U << 4U)
+#define REG_DESCEND (1U << 5U)
 #define REG_MSR_FIRST (1U << 6U)
 
 struct reg_field {
-   const char *name;
-   const size_t reg;
-   const uint8_t offs;
-   const uint8_t width;
-   const uint8_t flags;
+  const char *name;
+  const size_t reg;
+  const uint8_t offs;
+  const uint8_t width;
+  const uint16_t flags;
 };
 
 struct reg_dev {
-   uint8_t reg_width;
-   size_t reg_num;
-   uint32_t *data;
-   const struct reg_field *field_map;
-   uint32_t (*read_fn)(size_t reg);
-   int (*write_fn)(size_t reg, uint32_t val);
-   uint8_t flags;
+  uint16_t flags;
+  uint8_t reg_width;
+  size_t reg_num;
+  const struct reg_field *field_map;
+  int arg;
+  uint32_t (*read_fn)(int arg, size_t reg);
+  int (*write_fn)(int arg, size_t reg, uint32_t val);
+  uint32_t *data;
 };
 
 struct reg_meta {
-   const char **fields;
-   uint64_t *data;
-   struct reg_field **base_maps;
-   int (*activate)(int id);
-   struct reg_dev base;
+  const char **fields;
+  uint64_t *data;
+  struct reg_field **base_maps;
+  int (*activate)(int id);
+  struct reg_dev base;
 };
 
 /**
