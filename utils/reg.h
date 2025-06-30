@@ -203,7 +203,8 @@ int reg_bulk(struct reg_dev *d, const uint32_t *data);
  * should be as well to prevent a situation where a mutex is locked and never
  * released, or the other way around. This requirement is also enforced by
  * `reg_check()`. However, if locking is not needed, both function pointers can
- * be `NULL`.
+ * be `NULL`. Also, if the mutex itself is `NULL`, no locking is done whether or
+ * not the functions are defined.
  */
 
 /**

@@ -122,7 +122,12 @@ static inline bool reg_flags(const struct reg_dev *d, const struct reg_field *f,
  */
 static int reg_lock(struct reg_dev *d)
 {
-   if (d->lock_fn && (*d->lock_fn)(d->mutex)) {
+   if (!d) {
+      ERROR("null device given");
+      return -1;
+   }
+
+   if (d->mutex && d->lock_fn && (*d->lock_fn)(d->mutex)) {
       ERROR("lock failed");
       return -1;
    }
@@ -142,7 +147,12 @@ static int reg_lock(struct reg_dev *d)
  */
 static int reg_unlock(struct reg_dev *d)
 {
-   if (d->unlock_fn && (*d->unlock_fn)(d->mutex)) {
+   if (!d) {
+      ERROR("null device given");
+      return -1;
+   }
+
+   if (d->mutex && d->unlock_fn && (*d->unlock_fn)(d->mutex)) {
       ERROR("unlock failed");
       return -1;
    }
