@@ -22,13 +22,26 @@ static size_t last_read_reg;
 static uint32_t read_return_val;
 static int arg_called;
 
-/** @brief Simulated read function for hardware register access. */
+static const struct reg_field test_dev_map[] = {
+    // name              reg off wd  flags
+    {"PLL_NUM",           43, 0,  32, 0},
+    {NULL,                0,  0,  0,  0}  // sentinel
+};
+
 static uint32_t mock_read_fn(int arg, size_t reg)
 {
    arg_called = arg;
    read_fn_called++;
    last_read_reg = reg;
    return read_return_val;
+}
+
+static int mock_write_fn(int arg, size_t reg, uint32_t val)
+{
+   (void)arg;
+   (void)reg;
+   (void)val;
+   return 0;
 }
 
 /**
@@ -41,6 +54,8 @@ static int test_valid_read(void)
        .reg_num   = 4,
        .arg       = TEST_ARG,
        .read_fn   = mock_read_fn,
+       .write_fn  = mock_write_fn,
+       .field_map = test_dev_map,
        .data      = test_data,
    };
 
@@ -83,6 +98,8 @@ static int test_reg_index_zero(void)
        .reg_num   = 2,
        .arg       = TEST_ARG,
        .read_fn   = mock_read_fn,
+       .write_fn  = mock_write_fn,
+       .field_map = test_dev_map,
        .data      = test_data,
    };
 
@@ -125,6 +142,8 @@ static int test_reg_width_32_valid(void)
        .reg_num   = 1,
        .arg       = TEST_ARG,
        .read_fn   = mock_read_fn,
+       .write_fn  = mock_write_fn,
+       .field_map = test_dev_map,
        .data      = test_data,
    };
 
@@ -161,6 +180,8 @@ static int test_reg_width_1_bit_valid(void)
        .reg_num   = 1,
        .arg       = TEST_ARG,
        .read_fn   = mock_read_fn,
+       .write_fn  = mock_write_fn,
+       .field_map = test_dev_map,
        .data      = test_data,
    };
 
@@ -196,6 +217,8 @@ static int test_reg_width_1_bit_invalid(void)
        .reg_num   = 1,
        .arg       = TEST_ARG,
        .read_fn   = mock_read_fn,
+       .write_fn  = mock_write_fn,
+       .field_map = test_dev_map,
        .data      = test_data,
    };
 
@@ -231,6 +254,8 @@ static int test_reg_width_3_valid(void)
        .reg_num   = 1,
        .arg       = TEST_ARG,
        .read_fn   = mock_read_fn,
+       .write_fn  = mock_write_fn,
+       .field_map = test_dev_map,
        .data      = test_data,
    };
 
@@ -266,6 +291,8 @@ static int test_reg_width_3_invalid(void)
        .reg_num   = 1,
        .arg       = TEST_ARG,
        .read_fn   = mock_read_fn,
+       .write_fn  = mock_write_fn,
+       .field_map = test_dev_map,
        .data      = test_data,
    };
 
@@ -301,6 +328,8 @@ static int test_reg_width_17_valid(void)
        .reg_num   = 1,
        .arg       = TEST_ARG,
        .read_fn   = mock_read_fn,
+       .write_fn  = mock_write_fn,
+       .field_map = test_dev_map,
        .data      = test_data,
    };
 
@@ -336,6 +365,8 @@ static int test_reg_width_17_invalid(void)
        .reg_num   = 1,
        .arg       = TEST_ARG,
        .read_fn   = mock_read_fn,
+       .write_fn  = mock_write_fn,
+       .field_map = test_dev_map,
        .data      = test_data,
    };
 
@@ -392,6 +423,8 @@ static int test_zero_width(void)
        .reg_num   = 4,
        .arg       = TEST_ARG,
        .read_fn   = mock_read_fn,
+       .write_fn  = mock_write_fn,
+       .field_map = test_dev_map,
        .data      = test_data,
    };
 
@@ -413,6 +446,8 @@ static int test_reg_out_of_range(void)
        .reg_num   = 4,
        .arg       = TEST_ARG,
        .read_fn   = mock_read_fn,
+       .write_fn  = mock_write_fn,
+       .field_map = test_dev_map,
        .data      = test_data,
    };
 
@@ -434,6 +469,8 @@ static int test_reg_equal_regnum(void)
        .reg_num   = 4,
        .arg       = TEST_ARG,
        .read_fn   = mock_read_fn,
+       .write_fn  = mock_write_fn,
+       .field_map = test_dev_map,
        .data      = test_data,
    };
 
@@ -455,6 +492,8 @@ static int test_read_fn_too_many_bits(void)
        .reg_num   = 2,
        .arg       = TEST_ARG,
        .read_fn   = mock_read_fn,
+       .write_fn  = mock_write_fn,
+       .field_map = test_dev_map,
        .data      = test_data,
    };
 
@@ -484,6 +523,8 @@ static int test_read_fn_edge_bit(void)
        .reg_num   = 1,
        .arg       = TEST_ARG,
        .read_fn   = mock_read_fn,
+       .write_fn  = mock_write_fn,
+       .field_map = test_dev_map,
        .data      = test_data,
    };
 

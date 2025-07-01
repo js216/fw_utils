@@ -27,6 +27,13 @@ static int update_log[8]; // track which registers write_fn was called for
 static uint64_t update_val[8];
 static int update_fn_called;
 
+static uint32_t mock_read_fn(int arg, size_t reg)
+{
+   (void)arg;
+   (void)reg;
+   return 0;
+}
+
 static int mock_update_fn(int arg, size_t reg, uint32_t val)
 {
    (void)arg;
@@ -51,6 +58,7 @@ static int test_reg_set_get_foo(void)
                          .reg_num   = 4,
                          .field_map = test_fields,
                          .data      = data,
+                         .read_fn   = mock_read_fn,
                          .write_fn  = mock_update_fn};
 
    memset(update_log, 0, sizeof(update_log));
@@ -91,6 +99,7 @@ static int test_reg_set_get_bar(void)
                          .reg_num   = 4,
                          .field_map = test_fields,
                          .data      = data,
+                         .read_fn   = mock_read_fn,
                          .write_fn  = mock_update_fn};
 
    if (reg_set(&dev, "bar", 0x5) != 0) {
@@ -123,6 +132,7 @@ static int test_reg_set_get_wide(void)
                          .reg_num   = 4,
                          .field_map = test_fields,
                          .data      = data,
+                         .read_fn   = mock_read_fn,
                          .write_fn  = mock_update_fn};
 
    if (reg_set(&dev, "wide", 0xdeadbeef) != 0) {
@@ -156,6 +166,7 @@ static int test_reg_set_get_across(void)
                          .reg_num   = 4,
                          .field_map = test_fields,
                          .data      = data,
+                         .read_fn   = mock_read_fn,
                          .write_fn  = mock_update_fn};
 
    if (reg_set(&dev, "across", 0xff) != 0) {
@@ -183,6 +194,7 @@ static int test_reg_set_invalid_name(void)
                          .reg_num   = 2,
                          .field_map = test_fields,
                          .data      = data,
+                         .read_fn   = mock_read_fn,
                          .write_fn  = mock_update_fn};
 
    if (reg_get(&dev, "nonexist") != 0) {
@@ -205,6 +217,7 @@ static int test_reg_set_too_large(void)
                          .reg_num   = 1,
                          .field_map = test_fields,
                          .data      = data,
+                         .read_fn   = mock_read_fn,
                          .write_fn  = mock_update_fn};
 
    if (reg_set(&dev, "foo", 0x1ff) != -1) {
@@ -223,6 +236,7 @@ static int test_update_fn_failure(void)
        .reg_num   = 2,
        .field_map = test_fields,
        .data      = data,
+                         .read_fn   = mock_read_fn,
        .write_fn  = NULL // NULL simulates failure
    };
 
@@ -250,6 +264,7 @@ static int test_field_spanning_regs_at_zero_offset(void)
                          .reg_num   = 2,
                          .field_map = fields,
                          .data      = data,
+                         .read_fn   = mock_read_fn,
                          .write_fn  = mock_update_fn};
 
    memset(update_log, 0, sizeof(update_log));
@@ -284,6 +299,7 @@ static int test_field_max_width(void)
                          .reg_num   = 2,
                          .field_map = fields,
                          .data      = data,
+                         .read_fn   = mock_read_fn,
                          .write_fn  = mock_update_fn};
 
    memset(update_log, 0, sizeof(update_log));
@@ -319,6 +335,7 @@ static int test_zero_width_field(void)
                          .reg_num   = 1,
                          .field_map = fields,
                          .data      = data,
+                         .read_fn   = mock_read_fn,
                          .write_fn  = mock_update_fn};
 
    if (reg_set(&dev, "zero", 1) != -1) {
@@ -350,6 +367,7 @@ static int test_field_out_of_range(void)
                          .reg_num   = 2,
                          .field_map = fields,
                          .data      = data,
+                         .read_fn   = mock_read_fn,
                          .write_fn  = mock_update_fn};
 
    if (reg_set(&dev, "out_of_range", 1) != -1) {
@@ -376,6 +394,7 @@ static int test_null_pointers(void)
                          .reg_num   = 1,
                          .field_map = test_fields,
                          .data      = data,
+                         .read_fn   = mock_read_fn,
                          .write_fn  = mock_update_fn};
 
    if (reg_set(NULL, "foo", 1) != -1) {
@@ -418,6 +437,7 @@ static int test_field_at_register_end(void)
                          .reg_num   = 1,
                          .field_map = fields,
                          .data      = data,
+                         .read_fn   = mock_read_fn,
                          .write_fn  = mock_update_fn};
 
    memset(update_log, 0, sizeof(update_log));
@@ -457,6 +477,7 @@ static int test_field_highest_bit(void)
                          .reg_num   = 1,
                          .field_map = fields,
                          .data      = data,
+                         .read_fn   = mock_read_fn,
                          .write_fn  = mock_update_fn};
 
    if (reg_set(&dev, "msb", 1) != 0) {
@@ -495,6 +516,7 @@ static int test_set_no_change(void)
                          .reg_num   = 1,
                          .field_map = fields,
                          .data      = data,
+                         .read_fn   = mock_read_fn,
                          .write_fn  = mock_update_fn};
 
    memset(update_log, 0, sizeof(update_log));
@@ -529,6 +551,7 @@ static int test_field_starts_late(void)
                          .reg_num   = 4,
                          .field_map = fields,
                          .data      = data,
+                         .read_fn   = mock_read_fn,
                          .write_fn  = mock_update_fn};
 
    if (reg_set(&dev, "late", 0x12345678) != 0) {
@@ -565,6 +588,7 @@ static int test_field_ends_early(void)
                          .reg_num   = 3, // only reg 0 is used
                          .field_map = fields,
                          .data      = data,
+                         .read_fn   = mock_read_fn,
                          .write_fn  = mock_update_fn};
 
    if (reg_set(&dev, "early", 0xCAFEBABE) != 0) {
@@ -602,6 +626,7 @@ static int test_field_with_gap_registers(void)
                          .reg_num   = 3,
                          .field_map = fields,
                          .data      = data,
+                         .read_fn   = mock_read_fn,
                          .write_fn  = mock_update_fn};
 
    if (reg_set(&dev, "first", 0xAAAA0000) != 0) {
@@ -654,6 +679,7 @@ static int test_maxfield_unaligned_start(void)
                          .reg_num   = 3,
                          .field_map = fields,
                          .data      = data,
+                         .read_fn   = mock_read_fn,
                          .write_fn  = mock_update_fn};
 
    uint64_t val = 0x0123456789ABCDEFULL;
@@ -702,6 +728,7 @@ static int test_reg_get_set_valid(void)
        .reg_num   = 3,
        .field_map = fields,
        .data      = data,
+                         .read_fn   = mock_read_fn,
        .write_fn  = mock_update_fn,
    };
 
@@ -765,6 +792,7 @@ static int test_reg_set_invalid(void)
        .reg_num   = 2,
        .field_map = fields,
        .data      = data,
+                         .read_fn   = mock_read_fn,
        .write_fn  = mock_update_fn,
    };
 

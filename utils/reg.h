@@ -385,12 +385,13 @@ int reg_set(struct reg_dev *d, const char *field, uint64_t val);
 /**
  * @subsection Meta Devices
  *
- * Meta devices extend a physical device, as represented by `struct reg_dev`,
- * by allowing a virtually unlimited number of registers to be written and read
+ * Meta devices extend a physical device, as represented by `struct reg_dev`, by
+ * allowing a virtually unlimited number of registers to be written and read
  * back. When a meta device detects that the requested field is not found in the
  * currently active register map, it will automatically call `m->activate()` to
- * reload a different register map on the device, including the field values
- * previously set.
+ * reload a different register map on the device and write the field values
+ * previously set. (We assume that each register map reload clears all register
+ * values.)
  *
  * For example, assume we have a meta device with these fields:
  *
@@ -400,7 +401,7 @@ int reg_set(struct reg_dev *d, const char *field, uint64_t val);
  *     };
  *
  * However, if the underlying physical device (perhaps due to space limitations)
- * supports only three fields at a time, the we have to break up the ``meta
+ * supports only three fields at a time, then we have to break up the ``meta
  * map'' into two physical maps, such as
  *
  *     const struct reg_field map1[] = {
@@ -418,7 +419,7 @@ int reg_set(struct reg_dev *d, const char *field, uint64_t val);
  *        { NULL,   0,   0,   0,    0}
  *     };
  *
- * To be able to manipulate all fields in an equal way, we define a virtual
+ * To be able to manipulate the fields across both maps, we define a virtual
  * device:
  *
  *     uint64_t data[5];

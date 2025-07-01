@@ -14,7 +14,20 @@
 #include <stdlib.h>
 #include <string.h>
 
+static const struct reg_field test_dev_map[] = {
+    // name              reg off wd  flags
+    {"PLL_NUM",           43, 0,  32, 0},
+    {NULL,                0,  0,  0,  0}  // sentinel
+};
+
 static uint32_t write_data[4]; // backing register array
+
+static uint32_t mock_read_fn(int arg, size_t reg)
+{
+   (void)arg;
+   (void)reg;
+   return 0;
+}
 
 static int mock_update_fn(int arg, size_t reg, uint32_t val)
 {
@@ -35,9 +48,10 @@ static int test_reg_write_valid(void)
    struct reg_dev dev = {
        .reg_width = 32,
        .reg_num   = 4,
-       .field_map = NULL,
        .data      = write_data,
        .write_fn  = mock_update_fn,
+       .read_fn   = mock_read_fn,
+       .field_map = test_dev_map,
    };
 
    memset(write_data, 0x55, sizeof(write_data));
@@ -139,9 +153,10 @@ static int test_reg_write_first_register(void)
    struct reg_dev dev = {
        .reg_width = 32,
        .reg_num   = 4,
-       .field_map = NULL,
        .data      = write_data,
        .write_fn  = mock_update_fn,
+       .read_fn   = mock_read_fn,
+       .field_map = test_dev_map,
    };
 
    memset(write_data, 0, sizeof(write_data));
@@ -167,9 +182,10 @@ static int test_reg_write_last_register(void)
    struct reg_dev dev = {
        .reg_width = 32,
        .reg_num   = 4,
-       .field_map = NULL,
        .data      = write_data,
        .write_fn  = mock_update_fn,
+       .read_fn   = mock_read_fn,
+       .field_map = test_dev_map,
    };
 
    memset(write_data, 0, sizeof(write_data));
@@ -195,9 +211,10 @@ static int test_reg_write_zero_value(void)
    struct reg_dev dev = {
        .reg_width = 32,
        .reg_num   = 2,
-       .field_map = NULL,
        .data      = write_data,
        .write_fn  = mock_update_fn,
+       .read_fn   = mock_read_fn,
+       .field_map = test_dev_map,
    };
 
    memset(write_data, 0xFF, sizeof(write_data));
@@ -223,9 +240,10 @@ static int test_reg_write_max_value(void)
    struct reg_dev dev = {
        .reg_width = 32,
        .reg_num   = 4,
-       .field_map = NULL,
        .data      = write_data,
        .write_fn  = mock_update_fn,
+       .read_fn   = mock_read_fn,
+       .field_map = test_dev_map,
    };
 
    memset(write_data, 0, sizeof(write_data));
@@ -251,9 +269,10 @@ static int test_reg_write_size_max_index(void)
    struct reg_dev dev = {
        .reg_width = 32,
        .reg_num   = 4,
-       .field_map = NULL,
        .data      = write_data,
        .write_fn  = mock_update_fn,
+       .read_fn   = mock_read_fn,
+       .field_map = test_dev_map,
    };
 
    if (reg_write(&dev, (size_t)-1, 0x12345678) != -1) {
@@ -272,9 +291,10 @@ static int test_reg_write_zero_registers(void)
    struct reg_dev dev = {
        .reg_width = 32,
        .reg_num   = 0,
-       .field_map = NULL,
        .data      = write_data,
        .write_fn  = mock_update_fn,
+       .read_fn   = mock_read_fn,
+       .field_map = test_dev_map,
    };
 
    if (reg_write(&dev, 0, 0x12345678) != -1) {
@@ -294,9 +314,10 @@ static int test_reg_write_value_too_large_8bit_val(void)
    struct reg_dev dev = {
        .reg_width = 8,
        .reg_num   = 1,
-       .field_map = NULL,
        .data      = data,
        .write_fn  = mock_update_fn,
+       .read_fn   = mock_read_fn,
+       .field_map = test_dev_map,
    };
 
    // Value fits in 8 bits -> accepted
@@ -317,9 +338,10 @@ static int test_reg_write_value_too_large_8bit_inv(void)
    struct reg_dev dev = {
        .reg_width = 8,
        .reg_num   = 1,
-       .field_map = NULL,
        .data      = data,
        .write_fn  = mock_update_fn,
+       .read_fn   = mock_read_fn,
+       .field_map = test_dev_map,
    };
 
    // Value fits in 8 bits -> accepted
@@ -346,9 +368,10 @@ static int test_reg_write_value_too_large_16bit(void)
    struct reg_dev dev = {
        .reg_width = 16,
        .reg_num   = 1,
-       .field_map = NULL,
        .data      = data,
        .write_fn  = mock_update_fn,
+       .read_fn   = mock_read_fn,
+       .field_map = test_dev_map,
    };
 
    // Value fits in 16 bits -> accepted
@@ -375,9 +398,10 @@ static int test_reg_write_value_too_large_32bit(void)
    struct reg_dev dev = {
        .reg_width = 32,
        .reg_num   = 1,
-       .field_map = NULL,
        .data      = data,
        .write_fn  = mock_update_fn,
+       .read_fn   = mock_read_fn,
+       .field_map = test_dev_map,
    };
 
    // Any 32-bit value fits -> accepted

@@ -89,7 +89,7 @@ static inline uint32_t reg_mask32(size_t start, size_t len)
 }
 
 /***********************************************************
- * REGISTER MANIPULATION
+ * GENERAL HELPER FUNCTIONS
  ***********************************************************/
 
 /**
@@ -101,8 +101,8 @@ static inline uint32_t reg_mask32(size_t start, size_t len)
  * @return True if flags are set in either the field or the device, and false
  * if not. False if both d and f are NULL.
  */
-static inline bool reg_flags(const struct reg_dev *d, const struct reg_field *f,
-                             const uint16_t flags)
+static inline bool reg_flags(const struct reg_dev *const d,
+                             const struct reg_field *f, const uint16_t flags)
 {
    if (d && f)
       return ((d->flags & flags) || (f->flags & flags));
@@ -117,15 +117,56 @@ static inline bool reg_flags(const struct reg_dev *d, const struct reg_field *f,
 }
 
 /**
- * @brief Lock a mutex, if a mutex is provided.
- * @return 0 on success, -1 on error.
+ * @brief Check that all the usual fields are filled out.
+ * @return 0 on success, or -1 on failure.
  */
-static int reg_lock(struct reg_dev *d)
+static int reg_empty(const struct reg_dev *const d)
 {
    if (!d) {
       ERROR("null device given");
       return -1;
    }
+
+   if (!d->read_fn) {
+      ERROR("missing read_fn");
+      return -1;
+   }
+
+   if (!d->write_fn) {
+      ERROR("missing write_fn");
+      return -1;
+   }
+
+   if (d->reg_width == 0) {
+      ERROR("register has zero width");
+      return -1;
+   }
+
+   if (!d->data) {
+      ERROR("d->data is NULL");
+      return -1;
+   }
+
+   if (!d->field_map) {
+      ERROR("missing field map");
+      return -1;
+   }
+
+   return 0;
+}
+
+/***********************************************************
+ * REGISTER MANIPULATION
+ ***********************************************************/
+
+/**
+ * @brief Lock a mutex, if a mutex is provided.
+ * @return 0 on success, -1 on error.
+ */
+static int reg_lock(struct reg_dev *d)
+{
+   if (reg_empty(d))
+      return -1;
 
    if (d->mutex && d->lock_fn && (*d->lock_fn)(d->mutex)) {
       ERROR("lock failed");
@@ -147,10 +188,8 @@ static int reg_lock(struct reg_dev *d)
  */
 static int reg_unlock(struct reg_dev *d)
 {
-   if (!d) {
-      ERROR("null device given");
+   if (reg_empty(d))
       return -1;
-   }
 
    if (d->mutex && d->unlock_fn && (*d->unlock_fn)(d->mutex)) {
       ERROR("unlock failed");
@@ -168,15 +207,8 @@ static int reg_unlock(struct reg_dev *d)
 
 uint32_t reg_read(struct reg_dev *d, const size_t reg)
 {
-   if (!d || !d->read_fn) {
-      ERROR("invalid argument: null pointer or missing read_fn");
+   if (reg_empty(d))
       return 0;
-   }
-
-   if (d->reg_width == 0) {
-      ERROR("register has zero width");
-      return 0;
-   }
 
    if (reg >= d->reg_num) {
       ERROR("register outside device bounds");
@@ -202,15 +234,8 @@ uint32_t reg_read(struct reg_dev *d, const size_t reg)
 
 int reg_write(struct reg_dev *d, size_t reg, const uint32_t val)
 {
-   if (!d || !d->data || !d->write_fn) {
-      ERROR("null pointers in device struct");
+   if (reg_empty(d))
       return -1;
-   }
-
-   if (d->reg_width == 0) {
-      ERROR("zero register width");
-      return -1;
-   }
 
    if (reg >= d->reg_num) {
       ERROR("register outside device bounds");
@@ -235,24 +260,12 @@ int reg_write(struct reg_dev *d, size_t reg, const uint32_t val)
 
 int reg_bulk(struct reg_dev *d, const uint32_t *data)
 {
-   if (!d) {
-      ERROR("no device given");
+   if (reg_empty(d))
       return -1;
-   }
 
    if (d->reg_num == 0) {
       // no-op: zero registers to copy
       return 0;
-   }
-
-   if (!d->data) {
-      ERROR("d->data is NULL");
-      return -1;
-   }
-
-   if (d->reg_width == 0) {
-      ERROR("zero register width");
-      return -1;
    }
 
    if (reg_lock(d)) {
@@ -317,8 +330,11 @@ static uint32_t reg_field_mask(const uint8_t n, const uint8_t f_offs,
 static uint64_t reg_get_chunk(struct reg_dev *const d,
                               const struct reg_field *const f, const uint8_t n)
 {
-   if (!d || !d->data || !f) {
-      ERROR("null pointer(s) passed");
+   if (reg_empty(d))
+      return 0;
+
+   if (!f) {
+      ERROR("null field passed");
       return 0;
    }
 
@@ -374,8 +390,11 @@ static int reg_set_chunk(struct reg_dev *const d,
                          const struct reg_field *const f, const uint8_t n,
                          uint64_t val)
 {
-   if (!d || !d->data || !f) {
-      ERROR("null pointer(s) passed");
+   if (reg_empty(d))
+      return -1;
+
+   if (!f) {
+      ERROR("null field passed");
       return -1;
    }
 
@@ -429,10 +448,8 @@ static int reg_check_field_duplicate_names(const struct reg_field *map)
 
 static int reg_clear_buffer(struct reg_dev *d)
 {
-   if (!d) {
-      ERROR("null device");
+   if (reg_empty(d))
       return -1;
-   }
 
    if (reg_lock(d)) {
       ERROR("cannot lock the mutex");
@@ -544,10 +561,8 @@ static int reg_check_field_partial_coverage(struct reg_dev *d)
 
 int reg_check(struct reg_dev *const d)
 {
-   if (!d || !d->reg_num || !d->field_map) {
-      ERROR("invalid device pointer or zero reg_num or null field_map");
+   if (reg_empty(d))
       return -1;
-   }
 
    if (d->reg_width > MAX_REG) {
       ERROR("reg_width too large");
@@ -603,8 +618,11 @@ int reg_check(struct reg_dev *const d)
 static const struct reg_field *reg_find(const struct reg_dev *const d,
                                         const char *const field)
 {
-   if (!d || !d->data || !field || !d->field_map) {
-      ERROR("invalid argument: null pointer(s) passed");
+   if (reg_empty(d))
+      return NULL;
+
+   if (!field) {
+      ERROR("missing field");
       return NULL;
    }
 
@@ -652,8 +670,11 @@ static const struct reg_field *reg_find(const struct reg_dev *const d,
 
 uint64_t reg_get(struct reg_dev *const d, const char *const field)
 {
-   if (!d || !d->data || !d->field_map || !field) {
-      ERROR("invalid argument: null pointers in dev");
+   if (reg_empty(d))
+      return 0;
+
+   if (!field) {
+      ERROR("missing field");
       return 0;
    }
 
@@ -685,8 +706,11 @@ uint64_t reg_get(struct reg_dev *const d, const char *const field)
 int reg_set(struct reg_dev *const d, const char *const field,
             const uint64_t val)
 {
-   if (!d || !d->data || !field || !d->write_fn) {
-      ERROR("invalid argument: null pointer(s) or missing write_fn");
+   if (reg_empty(d))
+      return -1;
+
+   if (!field) {
+      ERROR("missing field");
       return -1;
    }
 

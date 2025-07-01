@@ -17,14 +17,20 @@
 #include <stddef.h>
 #include <stdint.h>
 
-// mock read data array for 32-bit registers
 static uint32_t mock_read_data[16];
 
-// mock read function reads from mock_read_data array
 static uint32_t mock_read_fn(int arg, size_t reg)
 {
    (void)arg;
    return mock_read_data[reg];
+}
+
+static int mock_write_fn(int arg, size_t reg, uint32_t val)
+{
+   (void)arg;
+   (void)reg;
+   (void)val;
+   return 0;
 }
 
 /**
@@ -47,6 +53,7 @@ static int test_reg_read_basic(void)
        .field_map = fields,
        .data      = data,
        .read_fn   = mock_read_fn,
+       .write_fn  = mock_write_fn,
    };
 
    mock_read_data[0] = 0xFFFFFFFF;
@@ -110,6 +117,7 @@ static int test_reg_read_cross_boundary(void)
        .field_map = fields,
        .data      = data,
        .read_fn   = mock_read_fn,
+       .write_fn  = mock_write_fn,
    };
 
    mock_read_data[0] = 0x80000000; // bit 31 set
@@ -160,6 +168,7 @@ static int test_reg_read_invalid_field(void)
        .field_map = fields,
        .data      = data,
        .read_fn   = mock_read_fn,
+       .write_fn  = mock_write_fn,
    };
 
    uint64_t val_read = reg_get(&dev, "nonexistent");
@@ -215,6 +224,7 @@ static int test_reg_read_null_field(void)
        .field_map = fields,
        .data      = data,
        .read_fn   = mock_read_fn,
+       .write_fn  = mock_write_fn,
    };
 
    uint64_t val_read = reg_get(&dev, NULL);
@@ -250,6 +260,7 @@ static int test_reg_read_missing_read_fn(void)
        .field_map = fields,
        .data      = data,
        .read_fn   = NULL,
+       .write_fn  = mock_write_fn,
    };
 
    uint64_t val_read = reg_get(&dev, "bit4");
