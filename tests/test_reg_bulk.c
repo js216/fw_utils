@@ -33,8 +33,8 @@ static int mock_write_fn(int arg, size_t reg, uint32_t val)
 
 static const struct reg_field test_dev_map[] = {
     // name              reg off wd  flags
-    {"PLL_NUM",           43, 0,  32, 0},
-    {NULL,                0,  0,  0,  0}  // sentinel
+    {"PLL_NUM", 43, 0, 32, 0},
+    {NULL,      0,  0, 0,  0}  // sentinel
 };
 
 /**
@@ -44,12 +44,14 @@ static int test_reg_bulk_simple(void)
 {
    uint32_t initial[3] = {0x12345678, 0x9abcdef0, 0x0fedcba9};
    uint32_t temp[3]    = {0};
-   struct reg_dev dev  = {.reg_width = 32,
-                          .reg_num   = 3,
-                          .read_fn   = mock_read_fn,
-                          .field_map = test_dev_map,
-                          .data      = temp,
-                          .write_fn  = mock_write_fn,};
+   struct reg_dev dev  = {
+        .reg_width = 32,
+        .reg_num   = 3,
+        .read_fn   = mock_read_fn,
+        .field_map = test_dev_map,
+        .data      = temp,
+        .write_fn  = mock_write_fn,
+   };
 
    if (reg_bulk(&dev, initial) != 0) {
       TEST_FAIL("reg_bulk failed on valid input");
@@ -83,12 +85,14 @@ static int test_reg_bulk_simple(void)
  */
 static int test_reg_bulk_zero_regs(void)
 {
-   struct reg_dev dev = {.reg_width = 32,
-                         .reg_num   = 0,
-                          .read_fn   = mock_read_fn,
-                          .field_map = test_dev_map,
-                         .data      = write_data,
-                         .write_fn  = mock_write_fn,};
+   struct reg_dev dev = {
+       .reg_width = 32,
+       .reg_num   = 0,
+       .read_fn   = mock_read_fn,
+       .field_map = test_dev_map,
+       .data      = write_data,
+       .write_fn  = mock_write_fn,
+   };
 
    if (reg_bulk(&dev, NULL) != 0) {
       TEST_FAIL("reg_bulk failed on zero reg_num");
@@ -112,12 +116,14 @@ static int test_reg_bulk_large(void)
       buffer[i]  = 0;
    }
 
-   struct reg_dev dev = {.reg_width = 32,
-                         .reg_num   = N,
-                          .read_fn   = mock_read_fn,
-                          .field_map = test_dev_map,
-                         .data      = buffer,
-                         .write_fn  = mock_write_fn,};
+   struct reg_dev dev = {
+       .reg_width = 32,
+       .reg_num   = N,
+       .read_fn   = mock_read_fn,
+       .field_map = test_dev_map,
+       .data      = buffer,
+       .write_fn  = mock_write_fn,
+   };
 
    if (reg_bulk(&dev, initial) != 0) {
       TEST_FAIL("reg_bulk failed on large input");
@@ -153,12 +159,14 @@ static int test_reg_bulk_null_dev(void)
 static int test_reg_bulk_null_storage(void)
 {
    uint32_t input[2]  = {0xaa, 0xbb};
-   struct reg_dev dev = {.reg_width = 32,
-                         .reg_num   = 2,
-                          .read_fn   = mock_read_fn,
-                          .field_map = test_dev_map,
-                         .data      = NULL,
-                         .write_fn  = mock_write_fn,};
+   struct reg_dev dev = {
+       .reg_width = 32,
+       .reg_num   = 2,
+       .read_fn   = mock_read_fn,
+       .field_map = test_dev_map,
+       .data      = NULL,
+       .write_fn  = mock_write_fn,
+   };
 
    if (reg_bulk(&dev, input) == 0) {
       TEST_FAIL("reg_bulk accepted NULL dev.data");
@@ -174,12 +182,14 @@ static int test_reg_bulk_null_storage(void)
 static int test_reg_bulk_zero_width(void)
 {
    uint32_t buf[2]    = {1, 2};
-   struct reg_dev dev = {.reg_width = 0,
-                         .reg_num   = 2,
-                          .read_fn   = mock_read_fn,
-                          .field_map = test_dev_map,
-                         .data      = buf,
-                         .write_fn  = mock_write_fn,};
+   struct reg_dev dev = {
+       .reg_width = 0,
+       .reg_num   = 2,
+       .read_fn   = mock_read_fn,
+       .field_map = test_dev_map,
+       .data      = buf,
+       .write_fn  = mock_write_fn,
+   };
 
    // Depending on implementation policy, this may or may not be valid.
    // For now, assume it's invalid.
@@ -197,12 +207,14 @@ static int test_reg_bulk_zero_width(void)
 static int test_reg_bulk_single_clear(void)
 {
    uint32_t word      = 0xffffffff;
-   struct reg_dev dev = {.reg_width = 32,
-                         .reg_num   = 1,
-                          .read_fn   = mock_read_fn,
-                          .field_map = test_dev_map,
-                         .data      = &word,
-                         .write_fn  = mock_write_fn,};
+   struct reg_dev dev = {
+       .reg_width = 32,
+       .reg_num   = 1,
+       .read_fn   = mock_read_fn,
+       .field_map = test_dev_map,
+       .data      = &word,
+       .write_fn  = mock_write_fn,
+   };
 
    if (reg_bulk(&dev, NULL) != 0) {
       TEST_FAIL("reg_bulk failed on single-word NULL input");
@@ -224,12 +236,14 @@ static int test_reg_bulk_weird_width(void)
 {
    uint32_t src[2]    = {0x11111111, 0x22222222};
    uint32_t dst[2]    = {0};
-   struct reg_dev dev = {.reg_width = 24, // Not 32, but irrelevant for copying
-                         .reg_num   = 2,
-                          .read_fn   = mock_read_fn,
-                          .field_map = test_dev_map,
-                         .data      = dst,
-                         .write_fn  = mock_write_fn,};
+   struct reg_dev dev = {
+       .reg_width = 24, // Not 32, but irrelevant for copying
+       .reg_num   = 2,
+       .read_fn   = mock_read_fn,
+       .field_map = test_dev_map,
+       .data      = dst,
+       .write_fn  = mock_write_fn,
+   };
 
    if (reg_bulk(&dev, src) != 0) {
       TEST_FAIL("reg_bulk failed on weird reg_width");
@@ -249,12 +263,14 @@ static int test_reg_bulk_weird_width(void)
  */
 static int test_reg_bulk_null_data_storage(void)
 {
-   struct reg_dev dev = {.reg_width = 32,
-                         .reg_num   = 2,
-                          .read_fn   = mock_read_fn,
-                          .field_map = test_dev_map,
-                         .data      = NULL,
-                         .write_fn  = mock_write_fn,};
+   struct reg_dev dev = {
+       .reg_width = 32,
+       .reg_num   = 2,
+       .read_fn   = mock_read_fn,
+       .field_map = test_dev_map,
+       .data      = NULL,
+       .write_fn  = mock_write_fn,
+   };
 
    if (reg_bulk(&dev, NULL) == 0) {
       TEST_FAIL("reg_bulk accepted NULL dev.data with reg_num > 0");
@@ -276,12 +292,14 @@ static int test_reg_bulk_incomplete_input_data(void)
    // Here we demonstrate intent, but we use same-sized arrays for safety.
    uint32_t src[10]   = {0};
    uint32_t dst[10]   = {0};
-   struct reg_dev dev = {.reg_width = 32,
-                         .reg_num   = 10,
-                          .read_fn   = mock_read_fn,
-                          .field_map = test_dev_map,
-                         .data      = dst,
-                         .write_fn  = mock_write_fn,};
+   struct reg_dev dev = {
+       .reg_width = 32,
+       .reg_num   = 10,
+       .read_fn   = mock_read_fn,
+       .field_map = test_dev_map,
+       .data      = dst,
+       .write_fn  = mock_write_fn,
+   };
 
    // Only partial data initialized (simulate caller bug)
    for (int i = 0; i < 5; i++)

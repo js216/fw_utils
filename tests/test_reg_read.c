@@ -24,8 +24,8 @@ static int arg_called;
 
 static const struct reg_field test_dev_map[] = {
     // name              reg off wd  flags
-    {"PLL_NUM",           43, 0,  32, 0},
-    {NULL,                0,  0,  0,  0}  // sentinel
+    {"PLL_NUM", 43, 0, 32, 0},
+    {NULL,      0,  0, 0,  0}  // sentinel
 };
 
 static uint32_t mock_read_fn(int arg, size_t reg)

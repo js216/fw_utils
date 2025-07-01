@@ -236,7 +236,7 @@ static int test_update_fn_failure(void)
        .reg_num   = 2,
        .field_map = test_fields,
        .data      = data,
-                         .read_fn   = mock_read_fn,
+       .read_fn   = mock_read_fn,
        .write_fn  = NULL // NULL simulates failure
    };
 
@@ -728,7 +728,7 @@ static int test_reg_get_set_valid(void)
        .reg_num   = 3,
        .field_map = fields,
        .data      = data,
-                         .read_fn   = mock_read_fn,
+       .read_fn   = mock_read_fn,
        .write_fn  = mock_update_fn,
    };
 
@@ -792,7 +792,7 @@ static int test_reg_set_invalid(void)
        .reg_num   = 2,
        .field_map = fields,
        .data      = data,
-                         .read_fn   = mock_read_fn,
+       .read_fn   = mock_read_fn,
        .write_fn  = mock_update_fn,
    };
 

@@ -244,9 +244,10 @@ int reg_bulk(struct reg_dev *d, const uint32_t *data);
  * Registers are at most 32 bits wide, fields 64 bits. Thus a field can span
  * several registers, depending on its width and offset in the starting
  * register, and the register width. All field names within a single register
- * map of a physical device must be unique; however, the same name may be reused
- * between several different register maps belonging to the same meta device
- * (see next section).
+ * map of a physical device must be unique, except those starting with the
+ * underscore character (e.g., `_RESERVED`); however, the same name may be
+ * reused between several different register maps belonging to the same meta
+ * device (see next section).
  *
  * Partially defined registers are not allowed; each register must be either
  * fully covered by fields, or not at all. However, gaps spanning entire

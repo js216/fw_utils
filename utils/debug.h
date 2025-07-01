@@ -12,10 +12,7 @@
 
 #include <stdbool.h>
 
-#define ERROR(x)                                                               \
-   do {                                                                        \
-      debug_error(__func__, __FILE__, __LINE__, x);                            \
-   } while (0)
+#define ERROR(x) debug_error(__func__, __FILE__, __LINE__, x) // no semicolon!
 
 /**
  * @brief Set error callback function.

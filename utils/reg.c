@@ -310,7 +310,7 @@ static uint32_t reg_field_mask(const uint8_t n, const uint8_t f_offs,
       len   = len0;
    } else {
       start = 0;
-      len   = f_width - len0 - ((n - 1) * reg_width);
+      len   = f_width - len0 - ((size_t)(n - 1) * reg_width);
       len   = reg_min(len, reg_width);
    }
 
@@ -344,7 +344,7 @@ static uint64_t reg_get_chunk(struct reg_dev *const d,
    }
 
    const size_t len0 = reg_min(f->offs + f->width, d->reg_width) - f->offs;
-   if ((n != 0) && (len0 + ((n - 1) * d->reg_width) >= 64)) {
+   if ((n != 0) && (len0 + ((size_t)(n - 1) * d->reg_width) >= 64)) {
       ERROR("too many bits to obtain");
       return 0;
    }
@@ -370,7 +370,7 @@ static uint64_t reg_get_chunk(struct reg_dev *const d,
    if (n == 0) {
       chunk >>= f->offs;
    } else {
-      chunk <<= len0 + ((n - 1) * d->reg_width);
+      chunk <<= len0 + ((size_t)(n - 1) * d->reg_width);
    }
 
    return chunk;
@@ -408,7 +408,7 @@ static int reg_set_chunk(struct reg_dev *const d,
       val <<= f->offs;
    } else {
       const size_t len0 = reg_min(f->offs + f->width, d->reg_width) - f->offs;
-      val >>= len0 + ((n - 1) * d->reg_width);
+      val >>= len0 + ((size_t)(n - 1) * d->reg_width);
    }
 
    // mask out irrelevant fields
@@ -429,20 +429,112 @@ static int reg_set_chunk(struct reg_dev *const d,
    return 0;
 }
 
+static uint64_t reg_get_field(struct reg_dev *const d,
+                              const struct reg_field *const f)
+{
+   if (reg_empty(d))
+      return 0;
+
+   if (!f) {
+      ERROR("invalid field");
+      return 0;
+   }
+
+   if (reg_lock(d)) {
+      ERROR("cannot lock the mutex");
+      return 0;
+   }
+
+   // assemble chunks into a single number
+   uint64_t val          = 0;
+   const size_t num_regs = reg_cdiv(f->offs + f->width, d->reg_width);
+   for (size_t n = 0; n < num_regs; n++)
+      val |= reg_get_chunk(d, f, n);
+
+   if (reg_unlock(d)) {
+      ERROR("cannot unlock the mutex");
+      return 0;
+   }
+
+   return val;
+}
+
+static int reg_set_field(struct reg_dev *const d,
+                         const struct reg_field *const f, const uint64_t val)
+{
+   if (reg_empty(d))
+      return -1;
+
+   if (!f) {
+      ERROR("invalid field");
+      return -1;
+   }
+
+   if (f->width < 64 && (val >> f->width) != 0) {
+      ERROR("value too large for field width");
+      return -1;
+   }
+
+   if (reg_lock(d)) {
+      ERROR("cannot lock the mutex");
+      return -1;
+   }
+
+   const size_t num_regs = reg_cdiv(f->offs + f->width, d->reg_width);
+   for (size_t n = 0; n < num_regs; n++) {
+      // invert order of register writes if REG_MSR_FIRST is set
+      size_t n_eff = n;
+      if (reg_flags(d, f, REG_MSR_FIRST))
+         n_eff = num_regs - n - 1;
+
+      // write to buffer
+      if (reg_set_chunk(d, f, n_eff, val)) {
+         ERROR("error writing to buffer");
+         if (d->unlock_fn)
+            (*d->unlock_fn)(d->mutex);
+         return -1;
+      }
+   }
+
+   if (reg_unlock(d)) {
+      ERROR("cannot unlock the mutex");
+      return -1;
+   }
+
+   return 0;
+}
+
 /***********************************************************
  * CONSISTENCY CHECKS
  ***********************************************************/
 
-static int reg_check_field_duplicate_names(const struct reg_field *map)
+static int reg_check_fields(const struct reg_dev *const d, const size_t i)
 {
-   for (size_t i = 0; map[i].name; i++) {
-      for (size_t j = i + 1; map[j].name; j++) {
-         if (strcmp(map[i].name, map[j].name) == 0) {
-            ERROR("detected duplicate strings");
-            return -1;
-         }
+   if (d->field_map[i].width == 0) {
+      ERROR("zero-width field not allowed");
+      return -1;
+   }
+
+   if (d->field_map[i].reg >= d->reg_num) {
+      ERROR("register outside the bounds of device");
+      return -1;
+   }
+
+   if (d->field_map[i].width > MAX_FIELD) {
+      ERROR("field too wide");
+      return -1;
+   }
+
+   for (size_t j = i + 1; d->field_map[j].name; j++) {
+      if (d->field_map[i].name[0] == '_')
+         continue;
+
+      if (strcmp(d->field_map[i].name, d->field_map[j].name) == 0) {
+         ERROR("detected duplicate strings");
+         return -1;
       }
    }
+
    return 0;
 }
 
@@ -477,7 +569,7 @@ static int reg_check_field_overlaps(struct reg_dev *d, const size_t i)
 {
    // write all 1's in field i
    const uint64_t mask = reg_mask64(0, d->field_map[i].width);
-   if (reg_set(d, d->field_map[i].name, mask)) {
+   if (reg_set_field(d, &d->field_map[i], mask)) {
       ERROR("cannot set field i");
       return -1;
    }
@@ -485,7 +577,10 @@ static int reg_check_field_overlaps(struct reg_dev *d, const size_t i)
    // clear all other fields
    for (size_t j = 0; d->field_map[j].name; j++) {
       if (j != i) {
-         if (reg_set(d, d->field_map[j].name, 0)) {
+         if (d->field_map[j].name[0] == '_')
+            continue;
+
+         if (reg_set_field(d, &d->field_map[j], 0)) {
             ERROR("cannot set field j");
             return -1;
          }
@@ -493,20 +588,20 @@ static int reg_check_field_overlaps(struct reg_dev *d, const size_t i)
    }
 
    // read back field i
-   if (reg_get(d, d->field_map[i].name) != mask) {
+   if (reg_get_field(d, &d->field_map[i]) != mask) {
       ERROR("cannot read original value; overlap likely");
       return -1;
    }
 
    // clear field i
-   if (reg_set(d, d->field_map[i].name, 0)) {
+   if (reg_set_field(d, &d->field_map[i], 0)) {
       ERROR("cannot clear field i");
       return -1;
    }
 
    // check all registers are now zero
    for (size_t j = 0; d->field_map[j].name; j++) {
-      if (reg_get(d, d->field_map[j].name) != 0) {
+      if (reg_get_field(d, &d->field_map[j]) != 0) {
          ERROR("registers failed to clear");
          return -1;
       }
@@ -520,7 +615,7 @@ static int reg_check_field_partial_coverage(struct reg_dev *d)
    // write all 1's in all fields
    for (size_t i = 0; d->field_map[i].name; i++) {
       const uint64_t mask = reg_mask64(0, d->field_map[i].width);
-      if (reg_set(d, d->field_map[i].name, mask)) {
+      if (reg_set_field(d, &d->field_map[i], mask)) {
          ERROR("cannot set field i");
          return -1;
       }
@@ -529,7 +624,7 @@ static int reg_check_field_partial_coverage(struct reg_dev *d)
    // read back all fields
    for (size_t i = 0; d->field_map[i].name; i++) {
       const uint64_t mask = reg_mask64(0, d->field_map[i].width);
-      if (reg_get(d, d->field_map[i].name) != mask) {
+      if (reg_get_field(d, &d->field_map[i]) != mask) {
          ERROR("value not all ones");
          return -1;
       }
@@ -578,13 +673,10 @@ int reg_check(struct reg_dev *const d)
    const uint16_t flags = d->flags;
    d->flags |= REG_NOCOMM;
 
-   if (reg_check_field_duplicate_names(d->field_map))
-      return -1;
-
-   if (reg_clear_buffer(d))
-      return -1;
-
    for (size_t i = 0; d->field_map[i].name; i++) {
+      if (reg_check_fields(d, i))
+         return -1;
+
       if (reg_check_field_overlaps(d, i))
          return -1;
    }
@@ -670,84 +762,24 @@ static const struct reg_field *reg_find(const struct reg_dev *const d,
 
 uint64_t reg_get(struct reg_dev *const d, const char *const field)
 {
-   if (reg_empty(d))
-      return 0;
-
    if (!field) {
       ERROR("missing field");
       return 0;
    }
 
-   const struct reg_field *f = reg_find(d, field);
-   if (!f) {
-      ERROR("invalid field");
-      return 0;
-   }
-
-   if (reg_lock(d)) {
-      ERROR("cannot lock the mutex");
-      return 0;
-   }
-
-   // assemble chunks into a single number
-   uint64_t val          = 0;
-   const size_t num_regs = reg_cdiv(f->offs + f->width, d->reg_width);
-   for (size_t n = 0; n < num_regs; n++)
-      val |= reg_get_chunk(d, f, n);
-
-   if (reg_unlock(d)) {
-      ERROR("cannot unlock the mutex");
-      return 0;
-   }
-
-   return val;
+   return reg_get_field(d, reg_find(d, field));
 }
 
 int reg_set(struct reg_dev *const d, const char *const field,
             const uint64_t val)
 {
-   if (reg_empty(d))
-      return -1;
-
    if (!field) {
       ERROR("missing field");
       return -1;
    }
 
-   const struct reg_field *f = reg_find(d, field);
-   if (!f) {
-      ERROR("invalid field");
-      return -1;
-   }
-
-   if (f->width < 64 && (val >> f->width) != 0) {
-      ERROR("value too large for field width");
-      return -1;
-   }
-
-   if (reg_lock(d)) {
-      ERROR("cannot lock the mutex");
-      return -1;
-   }
-
-   const size_t num_regs = reg_cdiv(f->offs + f->width, d->reg_width);
-   for (size_t n = 0; n < num_regs; n++) {
-      // invert order of register writes if REG_MSR_FIRST is set
-      size_t n_eff = n;
-      if (reg_flags(d, f, REG_MSR_FIRST))
-         n_eff = num_regs - n - 1;
-
-      // write to buffer
-      if (reg_set_chunk(d, f, n_eff, val)) {
-         ERROR("error writing to buffer");
-         if (d->unlock_fn)
-            (*d->unlock_fn)(d->mutex);
-         return -1;
-      }
-   }
-
-   if (reg_unlock(d)) {
-      ERROR("cannot unlock the mutex");
+   if (reg_set_field(d, reg_find(d, field), val)) {
+      ERROR("cannot set field");
       return -1;
    }
 

@@ -16,8 +16,8 @@
 
 static const struct reg_field test_dev_map[] = {
     // name              reg off wd  flags
-    {"PLL_NUM",           43, 0,  32, 0},
-    {NULL,                0,  0,  0,  0}  // sentinel
+    {"PLL_NUM", 43, 0, 32, 0},
+    {NULL,      0,  0, 0,  0}  // sentinel
 };
 
 static uint32_t write_data[4]; // backing register array
