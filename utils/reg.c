@@ -142,6 +142,11 @@ static int reg_empty(const struct reg_dev *const d)
       return -1;
    }
 
+   if (d->reg_width > MAX_REG) {
+      ERROR("reg_width too large");
+      return -1;
+   }
+
    if (!d->data) {
       ERROR("d->data is NULL");
       return -1;
@@ -440,21 +445,11 @@ static uint64_t reg_get_field(struct reg_dev *const d,
       return 0;
    }
 
-   if (reg_lock(d)) {
-      ERROR("cannot lock the mutex");
-      return 0;
-   }
-
    // assemble chunks into a single number
    uint64_t val          = 0;
    const size_t num_regs = reg_cdiv(f->offs + f->width, d->reg_width);
    for (size_t n = 0; n < num_regs; n++)
       val |= reg_get_chunk(d, f, n);
-
-   if (reg_unlock(d)) {
-      ERROR("cannot unlock the mutex");
-      return 0;
-   }
 
    return val;
 }
@@ -475,11 +470,6 @@ static int reg_set_field(struct reg_dev *const d,
       return -1;
    }
 
-   if (reg_lock(d)) {
-      ERROR("cannot lock the mutex");
-      return -1;
-   }
-
    const size_t num_regs = reg_cdiv(f->offs + f->width, d->reg_width);
    for (size_t n = 0; n < num_regs; n++) {
       // invert order of register writes if REG_MSR_FIRST is set
@@ -496,11 +486,6 @@ static int reg_set_field(struct reg_dev *const d,
       }
    }
 
-   if (reg_unlock(d)) {
-      ERROR("cannot unlock the mutex");
-      return -1;
-   }
-
    return 0;
 }
 
@@ -508,20 +493,47 @@ static int reg_set_field(struct reg_dev *const d,
  * CONSISTENCY CHECKS
  ***********************************************************/
 
-static int reg_check_fields(const struct reg_dev *const d, const size_t i)
+static int reg_check_field_width(const struct reg_dev *const d,
+                                 const struct reg_field *const f)
 {
-   if (d->field_map[i].width == 0) {
+   if (f->width == 0) {
       ERROR("zero-width field not allowed");
       return -1;
    }
 
-   if (d->field_map[i].reg >= d->reg_num) {
+   if (f->width > MAX_FIELD) {
+      ERROR("field too wide");
+      return -1;
+   }
+
+   if (f->reg >= d->reg_num) {
       ERROR("register outside the bounds of device");
       return -1;
    }
 
-   if (d->field_map[i].width > MAX_FIELD) {
-      ERROR("field too wide");
+   const size_t num_regs = reg_cdiv(f->offs + f->width, d->reg_width);
+
+   if (reg_flags(d, f, REG_DESCEND)) {
+      if (f->reg + 1 < num_regs) {
+         ERROR("too many descending registers");
+         return -1;
+      }
+   }
+
+   else { // ascending
+      if (f->reg + num_regs > d->reg_num) {
+         ERROR("too many ascending registers");
+         return -1;
+      }
+   }
+
+   return 0;
+}
+
+static int reg_check_fields(const struct reg_dev *const d, const size_t i)
+{
+   if (reg_check_field_width(d, &d->field_map[i])) {
+      ERROR("field width invalid");
       return -1;
    }
 
@@ -543,18 +555,8 @@ static int reg_clear_buffer(struct reg_dev *d)
    if (reg_empty(d))
       return -1;
 
-   if (reg_lock(d)) {
-      ERROR("cannot lock the mutex");
-      return -1;
-   }
-
    for (size_t i = 0; i < d->reg_num; i++)
       d->data[i] = 0;
-
-   if (reg_unlock(d)) {
-      ERROR("cannot unlock the mutex");
-      return -1;
-   }
 
    return 0;
 }
@@ -630,11 +632,6 @@ static int reg_check_field_partial_coverage(struct reg_dev *d)
       }
    }
 
-   if (reg_lock(d)) {
-      ERROR("cannot lock the mutex");
-      return -1;
-   }
-
    // check all registers are either completely full or empty
    for (size_t i = 0; i < d->reg_num; i++) {
       const uint32_t val = d->data[i];
@@ -646,11 +643,6 @@ static int reg_check_field_partial_coverage(struct reg_dev *d)
       }
    }
 
-   if (reg_unlock(d)) {
-      ERROR("cannot unlock the mutex");
-      return -1;
-   }
-
    return 0;
 }
 
@@ -659,13 +651,13 @@ int reg_check(struct reg_dev *const d)
    if (reg_empty(d))
       return -1;
 
-   if (d->reg_width > MAX_REG) {
-      ERROR("reg_width too large");
+   if ((d->lock_fn && !d->unlock_fn) || (!d->lock_fn && d->unlock_fn)) {
+      ERROR("both or none of lock_fn, unlock_fn must be given");
       return -1;
    }
 
-   if ((d->lock_fn && !d->unlock_fn) || (!d->lock_fn && d->unlock_fn)) {
-      ERROR("both or none of lock_fn, unlock_fn must be given");
+   if (reg_lock(d)) {
+      ERROR("cannot lock the mutex");
       return -1;
    }
 
@@ -692,6 +684,11 @@ int reg_check(struct reg_dev *const d)
 
    // restore original flags
    d->flags = flags;
+
+   if (reg_unlock(d)) {
+      ERROR("cannot unlock the mutex");
+      return -1;
+   }
 
    return 0;
 }
@@ -734,27 +731,9 @@ static const struct reg_field *reg_find(const struct reg_dev *const d,
       return NULL;
    }
 
-   // field invalid
-   if (f->width == 0 || f->width > MAX_FIELD) {
+   if (reg_check_field_width(d, f)) {
       ERROR("field width invalid");
       return NULL;
-   }
-
-   // check field does not extend outside the device
-   const size_t num_regs = reg_cdiv(f->offs + f->width, d->reg_width);
-
-   if (reg_flags(d, f, REG_DESCEND)) {
-      if (f->reg + 1 < num_regs) {
-         ERROR("too many descending registers");
-         return NULL;
-      }
-   }
-
-   else { // ascending
-      if (f->reg + num_regs > d->reg_num) {
-         ERROR("too many ascending registers");
-         return NULL;
-      }
    }
 
    return f;
@@ -767,7 +746,19 @@ uint64_t reg_get(struct reg_dev *const d, const char *const field)
       return 0;
    }
 
-   return reg_get_field(d, reg_find(d, field));
+   if (reg_lock(d)) {
+      ERROR("cannot lock the mutex");
+      return 0;
+   }
+
+   const uint64_t val = reg_get_field(d, reg_find(d, field));
+
+   if (reg_unlock(d)) {
+      ERROR("cannot unlock the mutex");
+      return 0;
+   }
+
+   return val;
 }
 
 int reg_set(struct reg_dev *const d, const char *const field,
@@ -778,10 +769,124 @@ int reg_set(struct reg_dev *const d, const char *const field,
       return -1;
    }
 
+   if (reg_lock(d)) {
+      ERROR("cannot lock the mutex");
+      return -1;
+   }
+
    if (reg_set_field(d, reg_find(d, field), val)) {
       ERROR("cannot set field");
       return -1;
    }
+
+   if (reg_unlock(d)) {
+      ERROR("cannot unlock the mutex");
+      return -1;
+   }
+
+   return 0;
+}
+
+/***********************************************************
+ * VIRTUAL DEVICES
+ ***********************************************************/
+
+/**
+ * @brief Check that all the virtual device fields are filled out.
+ * @param `v` Virtual device data structure to verify.
+ * @return 0 on success, or -1 on failure.
+ */
+static int reg_bad(const struct reg_virt *const v)
+{
+   if (!v) {
+      ERROR("virtual device is NULL");
+      return -1;
+   }
+
+   if (!v->fields || !v->fields[0]) {
+      ERROR("virtual device has no fields");
+      return -1;
+   }
+
+   if (!v->data) {
+      ERROR("virtual device has no data");
+      return -1;
+   }
+
+   if (!v->maps || !v->maps[0]) {
+      ERROR("virtual device has no base maps");
+      return -1;
+   }
+
+   if (!v->load_fn) {
+      ERROR("missing load function");
+      return -1;
+   }
+
+   return 0;
+}
+
+/**
+ * @brief Test underlying physical device for all available maps.
+ * @param `v` Virtual device data structure to verify.
+ * @return 0 on success, or -1 on failure.
+ */
+static int reg_verify_maps(struct reg_virt *const v)
+{
+   for (int i = 0; v->maps[i]; i++) {
+      v->base.field_map = v->maps[i];
+      if (reg_check(&v->base)) {
+         ERROR("bad map or bad device");
+         return -1;
+      }
+   }
+
+   return 0;
+}
+
+int reg_verify(struct reg_virt *v)
+{
+   if (reg_bad(v)) {
+      ERROR("malformed virtual device");
+      return -1;
+   }
+
+   if (reg_verify_maps(v)) {
+      ERROR("bad vdev maps");
+      return -1;
+   }
+
+   if (reg_empty(&v->base))
+      return -1;
+
+   return 0;
+}
+
+int reg_obtain(struct reg_virt *v, const char *field)
+{
+   if (reg_bad(v)) {
+      ERROR("malformed virtual device");
+      return -1;
+   }
+
+   // TODO
+   (void)v;
+   (void)field;
+
+   return 0;
+}
+
+int reg_adjust(struct reg_virt *v, const char *field, uint64_t val)
+{
+   if (reg_bad(v)) {
+      ERROR("malformed virtual device");
+      return -1;
+   }
+
+   // TODO
+   (void)v;
+   (void)field;
+   (void)val;
 
    return 0;
 }

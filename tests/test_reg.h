@@ -17,6 +17,7 @@ int test_reg_bulk(void);
 int test_reg_write(void);
 int test_reg_desc(void);
 int test_reg_multi(void);
+int test_reg_virt(void);
 
 #endif // TEST_REG_H
 

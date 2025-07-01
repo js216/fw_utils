@@ -33,6 +33,7 @@ int main(void)
    ret = ret || test_reg_get_phy();
    ret = ret || test_reg_desc();
    ret = ret || test_reg_multi();
+   ret = ret || test_reg_virt();
 
    return ret;
 }

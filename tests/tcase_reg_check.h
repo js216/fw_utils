@@ -32,6 +32,32 @@ static const struct map_test mf[] = {
      .expect_ok = 1,
      },
 
+    {
+     "more bits than registers", {.reg_width = 1,
+         .reg_num   = 1,
+         .field_map = NULL,
+         .arg       = 0,
+         .read_fn   = NULL,
+         .write_fn  = NULL,
+         .data      = NULL,
+         .flags     = 0},
+     {{"C", 0, 0, 2, 0}, {NULL, 0, 0, 0, 0}},
+     .expect_ok = 0,
+     },
+
+    {
+     "offset out of bounds (16-bit reg)", {.reg_width = 16,
+         .reg_num   = 1,
+         .field_map = NULL,
+         .arg       = 0,
+         .read_fn   = NULL,
+         .write_fn  = NULL,
+         .data      = NULL,
+         .flags     = 0},
+     {{"C", 0, 16, 16, 0}, {NULL, 0, 0, 0, 0}},
+     .expect_ok = 0,
+     },
+
     {"two filled with gap",
      {.reg_width = 8,
       .reg_num   = 3,

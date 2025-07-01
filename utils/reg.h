@@ -22,6 +22,7 @@
 #define REG_ALIAS     (1U << 4U)
 #define REG_DESCEND   (1U << 5U)
 #define REG_MSR_FIRST (1U << 6U)
+#define REG_NORESET   (1U << 7U)
 
 struct reg_field {
    const char *name;
@@ -52,12 +53,12 @@ struct reg_dev {
    int lock_count;
 };
 
-struct reg_meta {
+struct reg_virt {
    const char **fields;
    uint64_t *data;
-   struct reg_field **base_maps;
-   int (*activate)(int id);
+   const struct reg_field **maps;
    struct reg_dev base;
+   int (*load_fn)(int arg, int id);
 };
 
 /**
@@ -246,7 +247,7 @@ int reg_bulk(struct reg_dev *d, const uint32_t *data);
  * register, and the register width. All field names within a single register
  * map of a physical device must be unique, except those starting with the
  * underscore character (e.g., `_RESERVED`); however, the same name may be
- * reused between several different register maps belonging to the same meta
+ * reused between several different register maps belonging to the same virtual
  * device (see next section).
  *
  * Partially defined registers are not allowed; each register must be either
@@ -259,8 +260,7 @@ int reg_bulk(struct reg_dev *d, const uint32_t *data);
  * However, with realistically sized register maps (up to a couple hundred
  * fields), the field lookup is unlikely to be a performance bottleneck.
  *
- * Register maps must be terminated with the sentinel field `{NULL, 0, 0, 0,
- * 0}`.
+ * Register maps must be terminated with `{NULL, 0, 0, 0, 0}`.
  */
 
 /**
@@ -285,6 +285,10 @@ int reg_bulk(struct reg_dev *d, const uint32_t *data);
  * should be written to the underlying device first when setting a
  * multi-register field. Unlike `REG_DESCEND`, only the order of writes is
  * affected, not the register layout.
+ *
+ * @item `REG_NORESET` prevents virtual devices from automatically
+ * writing this field each time a field map is reloaded. (See the section on
+ * virtual devices for more details.)
  *
  * @item `REG_DESCEND` reverses the register order in the layout for
  * multi-register fields. (See detailed discussion below.)
@@ -384,90 +388,162 @@ int reg_set(struct reg_dev *d, const char *field, uint64_t val);
 /// @endfunc
 
 /**
- * @subsection Meta Devices
+ * @subsection Virtual Devices
  *
- * Meta devices extend a physical device, as represented by `struct reg_dev`, by
- * allowing a virtually unlimited number of registers to be written and read
- * back. When a meta device detects that the requested field is not found in the
- * currently active register map, it will automatically call `m->activate()` to
- * reload a different register map on the device and write the field values
- * previously set. (We assume that each register map reload clears all register
- * values.)
+ * Virtual devices extend a physical device, as represented by `struct reg_dev`,
+ * by allowing a virtually unlimited number of registers to be written and read
+ * back. When a virtual device detects that the requested field is not found in
+ * the currently loaded register map, it will try to find it in another map.
  *
- * For example, assume we have a meta device with these fields:
+ * For example, assume we have a virtual device with these fields:
  *
- *     const char *meta_fields[] = {
- *        "VAL_A", "VAL_B", "VAL_C",
- *        "VAL_P", "VAL_Q", NULL
+ *     const char *virt_fields[] = {
+ *        "A", "B", "C", "P", "Q",
+ *        NULL // mandatory termination!
  *     };
  *
  * However, if the underlying physical device (perhaps due to space limitations)
- * supports only three fields at a time, then we have to break up the ``meta
+ * supports only three fields at a time, then we have to break up the ``virtual
  * map'' into two physical maps, such as
  *
  *     const struct reg_field map1[] = {
- *        // name   reg  offs width flags
- *        {"VAL_A", 0,   0,   8,    0},
- *        {"VAL_B", 0,   8,   8,    0},
- *        {"VAL_C", 1,  16,   16,   0},
- *        { NULL,   0,  0,    0,    0}
+ *        // name  reg  offs width flags
+ *        {"A",     0,   0,   8,    0},
+ *        {"B",     0,   8,   8,    0},
+ *        {"C",     1,   0,   16,   0},
+ *        { NULL,   0,   0,   0,    0}
  *     };
  *
  *     const struct reg_field map2[] = {
- *        // name   reg  offs width flags
- *        {"VAL_P", 0,   0,   8,    0},
- *        {"VAL_Q", 0,   8,   8,    0},
- *        { NULL,   0,   0,   0,    0}
+ *        // name reg  offs width flags
+ *        {"P",    0,   0,   8,    0},
+ *        {"Q",    0,   8,   8,    0},
+ *        {"A",    1,   0,  16,    0},
+ *        { NULL,  0,   0,   0,    0}
  *     };
  *
  * To be able to manipulate the fields across both maps, we define a virtual
  * device:
  *
- *     uint64_t data[5];
+ *     #define NUM_REGS 2
+ *     #define NUM_FIELDS 5
  *
- *     const struct reg_field *bm[] = {map1, map2};
+ *     uint32_t dev_data[NUM_REGS];
+ *     uint64_t virt_data[NUM_FIELDS];
  *
- *     struct reg_meta mdev = {
- *        .fields    = meta_fields,
- *        .data      = data,
- *        .base_maps = bm,
- *        .activate  = reconfigure_fn,
+ *     struct reg_virt vdev = {
+ *        .fields   = virt_fields,
+ *        .data     = virt_data,
+ *        .maps     = (const struct reg_field *[]){map1, map2, NULL},
+ *        .load_fn  = dev_load_fn,
  *        .base = {
- *           .reg_width = 32,
+ *           .reg_width = 16,
  *           .reg_num   = NUM_REGS,
- *           .field_map = dev_map,
- *           .data      = dev_data,
  *           .read_fn   = dev_read_fn,
  *           .write_fn  = dev_write_fn,
+ *           .data      = dev_data,
  *        },
  *     };
  *
  * Now data access is as simple as before:
  *
- *     reg_adjust(&mdev, "VAL_A", 0x12);
- *     reg_adjust(&mdev, "VAL_P", 0x7F);
- *     reg_obtain(&mdev, "VAL_A");
+ *     if (reg_verify(&vdev))
+ *        ;// handle the error
  *
- * Behind the scenes, the code will load `map1` to set the value of field
- * `"VAL_A"`, then reload the configuration to `map2` to allow setting
- * `"VAL_P"`. When the we demand to read the value of `"VAL_A"` again, the
- * configuration is again changed to `map1`.
+ *     reg_adjust(&vdev, "A", 0x12);
+ *     reg_adjust(&vdev, "P", 0x7F);
+ *     reg_obtain(&vdev, "A");
+ *
+ * Behind the scenes, the code use the `dev_load_fn()` to load `map1` to set
+ * the value of field `"A"`, then change the configuration to `map2` to allow
+ * setting `"P"`. Since the field `"A"` is shared between the two maps, the code
+ * re-loads its value after changing the configuration.
+ */
+
+/**
+ * @subsubsection Virtual Fields: Unique and Shared
+ *
+ * A virtual device defines two matched arrays: `fields` is an array of strings
+ * giving names to the available fields, while `data` contains their value. The
+ * two arrays must be allocated to have the same number of elements (though not
+ * necessarily bytes, in case `uint64_t` takes up a different amount of space
+ * than a string pointer).
+ *
+ * If a virtual field appears in only one of the possible maps corresponding to
+ * that virtual device, it is considered *unique*. For a unique field, each
+ * `adjust` call will check that the map it belongs is loaded. If it is not,
+ * the code will automatically load it.
+ *
+ * On the other hand, *shared* fields---those that appear in more than one
+ * map---may or may not require re-loading a new map on field access. Note that
+ * unlike in physical field maps, the virtual fields only have a name and a
+ * value; no flags, width, or offset are specified. When a field name is
+ * shared, it is possible that different maps will assign a different width to
+ * it. This complicates the access rules:
+ *
+ * @begin itemize
+ *
+ * @item If the field is present in the currently loaded map,
+ * and the value fits in the size of the field, then it is set without changing
+ * the map. If the value is too large to fit, then we look for the next map
+ * containing the same field name and try if it fits, and so on.
+ *
+ * @item An error is reported if the field name cannot be found in any of the
+ * maps belonging to the given virtual device, or if the name can be found,
+ * but the value is too large to fit into any of them.
+ *
+ * @end itemize
+ *
+ * Unlike adjusting the field value, obtaining it can return the value directly
+ * from the data buffer and will not reload the map. In fact, there is no need
+ * to consult the individual physical devices at all in the process. In other
+ * words, the flag `REG_VOLATILE` is not supported for virtual devices.
+ */
+
+/**
+ * @subsubsection Load Function
+ *
+ * When a virtual field cannot be found in the currently loaded map, the code
+ * will call a virtual device's `load_fn(int arg, int id)` to reconfigure the
+ * hardware as appropriate. The function is given two arguments: `arg` is
+ * whatever is set in the underlying device strucure (i.e., `vdev->base->arg`),
+ * while the `id` is the sequential number of the requested new field map. The
+ * numbering starts with 0 and matches the order the maps are listed in
+ * `vdev->maps`.
+ *
+ * Assuming the load function succeded (i.e., returned 0), we then re-set all
+ * the values of all the fields that are present in the new map, both unique
+ * and shared. To prevent re-setting a field value, set the `REG_NORESET` flag
+ * for the relevant field or device.
+ *
+ * An error will be reported if loading a map requires re-setting a field whose
+ * value is too large to fit in to new map. For example, if the old map defines
+ * a 16-bit field `"F"`, while the new map defines `"F"` to have only 8 bits,
+ * that constitutes an error condition. Make sure that all fields are set to
+ * values that are legal in the new map before triggering setting a field not
+ * present in the current map.
  */
 
 /**
  * @api
  */
 
-/// @func Get the value of a given meta field.
-int reg_obtain(struct reg_meta *m, const char *field);
-/// @param `m` Meta device data structure to read from.
+/// @func Check virtual device for consistency.
+int reg_verify(struct reg_virt *v);
+/// @param `v` Virtual device data structure to check.
+/// @return 0 on success, $-1$ on failure.
+/// @endfunc
+
+/// @func Get the value of a given virtual field.
+uint64_t reg_obtain(struct reg_virt *v, const char *field);
+/// @param `v` Virtual device data structure to read from.
 /// @param `field` Null-terminated field name.
 /// @return Register value. On failure, return 0.
 /// @endfunc
 
-/// @func Set the value of a given meta field.
-int reg_adjust(struct reg_meta *m, const char *field, uint64_t val);
-/// @param `m` Meta device data structure to modify.
+/// @func Set the value of a given virtual field.
+int reg_adjust(struct reg_virt *v, const char *field, uint64_t val);
+/// @param `v` Virtual device data structure to modify.
 /// @param `val` Value to set in the field.
 /// @param `field` Null-terminated field name.
 /// @return 0 on success, $-1$ on failure.
