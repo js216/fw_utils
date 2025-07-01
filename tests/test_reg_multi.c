@@ -14,6 +14,7 @@
 #include <stdint.h>
 #include <stdio.h>
 
+#define TEST_NUM_DEV  4U
 #define TEST_NUM_REGS 126U
 
 static const struct reg_field test_dev_map[] = {
@@ -43,6 +44,8 @@ static const struct reg_field test_dev_map[] = {
 };
 
 static uint32_t dummy_phys_reg[2];
+static struct reg_dev test_dev[TEST_NUM_DEV];
+static uint32_t test_dev_data[TEST_NUM_DEV][TEST_NUM_REGS];
 
 static int test_write_fn(int arg, size_t reg, uint32_t val)
 {
@@ -58,10 +61,6 @@ static int test_write_fn(int arg, size_t reg, uint32_t val)
 
    dummy_phys_reg[i] = val;
 
-   //// TODO: remove this
-   // printf("%s%zu : 0x%" PRIx32 "\n",
-   //       i ? "" : "\n", reg, val);
-
    return 0;
 }
 
@@ -72,66 +71,23 @@ static uint32_t test_read_fn(int arg, size_t reg)
    return 0;
 }
 
-static uint32_t test_dev_data[4][TEST_NUM_REGS] = {0};
-
-static struct reg_dev *test_dev(const unsigned int ch)
+static void test_setup(void)
 {
-   const uint8_t reg_width = 16;
-   const uint16_t flags    = REG_DESCEND | REG_MSR_FIRST;
-
-   static struct reg_dev test_dev_arr[4] = {
-       {
-        .reg_width = reg_width,
-        .reg_num   = TEST_NUM_REGS,
-        .field_map = test_dev_map,
-        .data      = test_dev_data[0],
-        .read_fn   = &test_read_fn,
-        .write_fn  = &test_write_fn,
-        .flags     = flags,
-        },
-
-       {
-        .reg_width = reg_width,
-        .reg_num   = TEST_NUM_REGS,
-        .field_map = test_dev_map,
-        .data      = test_dev_data[1],
-        .read_fn   = &test_read_fn,
-        .write_fn  = &test_write_fn,
-        .flags     = flags,
-        },
-
-       {
-        .reg_width = reg_width,
-        .reg_num   = TEST_NUM_REGS,
-        .field_map = test_dev_map,
-        .data      = test_dev_data[2],
-        .read_fn   = &test_read_fn,
-        .write_fn  = &test_write_fn,
-        .flags     = flags,
-        },
-
-       {
-        .reg_width = reg_width,
-        .reg_num   = TEST_NUM_REGS,
-        .field_map = test_dev_map,
-        .data      = test_dev_data[3],
-        .read_fn   = &test_read_fn,
-        .write_fn  = &test_write_fn,
-        .flags     = flags,
-        },
-   };
-
-   if (ch < 4)
-      return &(test_dev_arr[ch]);
-
-   // never reached
-   TEST_FAIL("invalid device requested");
-   return NULL;
+   for (size_t i = 0; i < TEST_NUM_DEV; i++)
+      test_dev[i] = (struct reg_dev){
+          .reg_width = 16,
+          .reg_num   = TEST_NUM_REGS,
+          .field_map = test_dev_map,
+          .data      = test_dev_data[0],
+          .read_fn   = &test_read_fn,
+          .write_fn  = &test_write_fn,
+          .flags     = REG_DESCEND | REG_MSR_FIRST,
+      };
 }
 
 static int test_init_one(const unsigned int ch, const uint32_t pattern)
 {
-   struct reg_dev *dev = test_dev(ch);
+   struct reg_dev *dev = &test_dev[ch];
    if (!dev) {
       TEST_FAIL("cannot get device");
       return -1;
@@ -181,7 +137,7 @@ static int test_init(void)
 
    // make sure all registers contain the correct pattern
    for (int ch = 0; ch < 4; ch++) {
-      struct reg_dev *dev = test_dev(ch);
+      struct reg_dev *dev = &test_dev[ch];
       if (!dev) {
          TEST_FAIL("cannot get device");
          return -1;
@@ -210,7 +166,7 @@ static int test_init(void)
 
 static int test_rw32(int ch, const uint32_t pattern)
 {
-   struct reg_dev *dev = test_dev(ch);
+   struct reg_dev *dev = &test_dev[ch];
    if (!dev) {
       TEST_FAIL("cannot get device");
       return -1;
@@ -276,6 +232,8 @@ static int test_rw32_patterns(void)
 
 int test_reg_multi(void)
 {
+   test_setup();
+
    static int (*valid_fn[])(void) = {test_init, test_rw32_patterns, NULL};
 
    static int (*invalid_fn[])(void) = {NULL};
