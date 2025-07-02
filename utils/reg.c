@@ -507,6 +507,11 @@ static int reg_set_field(struct reg_dev *const d,
       return -1;
    }
 
+   if (reg_check_field_width(d, f)) {
+      ERROR("field width invalid");
+      return -1;
+   }
+
    if (f->width < 64 && (val >> f->width) != 0) {
       ERROR("value too large for field width");
       return -1;
