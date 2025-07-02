@@ -15,9 +15,6 @@
 #include <stddef.h>
 #include <stdint.h>
 
-// TODO: remove this
-#include <stdio.h>
-
 #define REG_READONLY  (1U << 0U)
 #define REG_WRITEONLY (1U << 1U)
 #define REG_VOLATILE  (1U << 2U)
@@ -60,8 +57,8 @@ struct reg_virt {
    const char **fields;
    uint64_t *data;
    const struct reg_field **maps;
-   struct reg_dev base;
    int (*load_fn)(int arg, int id);
+   struct reg_dev base;
 };
 
 /**
@@ -521,14 +518,23 @@ int reg_set(struct reg_dev *d, const char *field, uint64_t val);
  * Assuming the load function succeeded (i.e., returned 0), we then re-set all
  * the values of all the fields that are present in the new map, both unique
  * and shared. To prevent re-setting a field value, set the `REG_NORESET` flag
- * for the relevant field or device.
+ * for the relevant field or device. However, in that case the virtual field
+ * data and device data can become unsynchronized. In other words, for a
+ * `REG_NORESET` field, `reg_obtain` and `reg_get` may return different values:
+ * `reg_get` will report a 0, since the field is cleared and not re-set after
+ * loading the new configuration, while `reg_obtain` will still return the
+ * previously-set value. This allows a `REG_NORESET` field to be manually set to
+ * its old value whenever the application requires it, rather than always after
+ * re-loading configurations.
  *
  * An error will be reported if loading a map requires re-setting a field whose
  * value is too large to fit in to new map. For example, if the old map defines
  * a 16-bit field `"F"`, while the new map defines `"F"` to have only 8 bits,
  * that constitutes an error condition. Make sure that all fields are set to
  * values that are legal in the new map before triggering setting a field not
- * present in the current map.
+ * present in the current map. Alternatively, set the `REG_NORESET` flag on the
+ * field in the new map to prevent setting values that are potentially too
+ * large.
  */
 
 /**

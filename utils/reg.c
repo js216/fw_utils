@@ -943,6 +943,10 @@ int reg_adjust(struct reg_virt *v, const char *field, uint64_t val)
    for (int i = 0; v->base.field_map[i].name; i++) {
       const struct reg_field *fi = &v->base.field_map[i];
 
+      // skip re-setting fields with the REG_NORESET flag
+      if ((fi != f) && reg_flags(&v->base, fi, REG_NORESET))
+         continue;
+
       // use old virtual value for other fields
       uint64_t fi_val = (fi == f) ? val : reg_obtain(v, fi->name);
 
