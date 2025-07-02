@@ -11,7 +11,6 @@
 #include <stddef.h>
 
 #define TCASE_VIRT_MAX_REGS   2
-#define TCASE_VIRT_MAX_MAPS   5
 #define TCASE_VIRT_MAX_FIELDS 10
 
 struct map_virt_test {
@@ -36,6 +35,14 @@ static const struct reg_field map2[] = {
     {NULL, 0, 0, 0,  0}
 };
 
+static const struct reg_field map_bad[] = {
+    //    reg of wd flags
+    {"P",  0, 0, 7,  0},
+    {"Q",  0, 8, 8,  0},
+    {"A",  1, 0, 16, 0},
+    {NULL, 0, 0, 0,  0}
+};
+
 static const struct map_virt_test mvt[] = {
     {.good = true,
      .desc = "example from header file",
@@ -43,6 +50,33 @@ static const struct map_virt_test mvt[] = {
          {
              .fields = (const char *[]){"A", "B", "C", "P", "Q", NULL},
              .maps   = (const struct reg_field *[]){map1, map2, NULL},
+             .base   = {.reg_width = 16, .reg_num = 2},
+         }},
+
+    {.good = false,
+     .desc = "unmapped field",
+     .vdev =
+         {
+             .fields = (const char *[]){"UNMAPPED", "P", "Q", NULL},
+             .maps   = (const struct reg_field *[]){map1, map2, NULL},
+             .base   = {.reg_width = 16, .reg_num = 2},
+         }},
+
+    {.good = false,
+     .desc = "missing maps",
+     .vdev =
+         {
+             .fields = (const char *[]){"UNMAPPED", "P", "Q", NULL},
+             .maps   = (const struct reg_field *[]){NULL},
+             .base   = {.reg_width = 16, .reg_num = 2},
+         }},
+
+    {.good = false,
+     .desc = "malformed map",
+     .vdev =
+         {
+             .fields = (const char *[]){"P", "Q", NULL},
+             .maps   = (const struct reg_field *[]){map2, map_bad},
              .base   = {.reg_width = 16, .reg_num = 2},
          }},
 };

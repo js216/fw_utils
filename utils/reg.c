@@ -434,6 +434,43 @@ static int reg_set_chunk(struct reg_dev *const d,
    return 0;
 }
 
+static int reg_check_field_width(const struct reg_dev *const d,
+                                 const struct reg_field *const f)
+{
+   if (f->width == 0) {
+      ERROR("zero-width field not allowed");
+      return -1;
+   }
+
+   if (f->width > MAX_FIELD) {
+      ERROR("field too wide");
+      return -1;
+   }
+
+   if (f->reg >= d->reg_num) {
+      ERROR("register outside the bounds of device");
+      return -1;
+   }
+
+   const size_t num_regs = reg_cdiv(f->offs + f->width, d->reg_width);
+
+   if (reg_flags(d, f, REG_DESCEND)) {
+      if (f->reg + 1 < num_regs) {
+         ERROR("too many descending registers");
+         return -1;
+      }
+   }
+
+   else { // ascending
+      if (f->reg + num_regs > d->reg_num) {
+         ERROR("too many ascending registers");
+         return -1;
+      }
+   }
+
+   return 0;
+}
+
 static uint64_t reg_get_field(struct reg_dev *const d,
                               const struct reg_field *const f)
 {
@@ -442,6 +479,11 @@ static uint64_t reg_get_field(struct reg_dev *const d,
 
    if (!f) {
       ERROR("invalid field");
+      return 0;
+   }
+
+   if (reg_check_field_width(d, f)) {
+      ERROR("field width invalid");
       return 0;
    }
 
@@ -492,43 +534,6 @@ static int reg_set_field(struct reg_dev *const d,
 /***********************************************************
  * CONSISTENCY CHECKS
  ***********************************************************/
-
-static int reg_check_field_width(const struct reg_dev *const d,
-                                 const struct reg_field *const f)
-{
-   if (f->width == 0) {
-      ERROR("zero-width field not allowed");
-      return -1;
-   }
-
-   if (f->width > MAX_FIELD) {
-      ERROR("field too wide");
-      return -1;
-   }
-
-   if (f->reg >= d->reg_num) {
-      ERROR("register outside the bounds of device");
-      return -1;
-   }
-
-   const size_t num_regs = reg_cdiv(f->offs + f->width, d->reg_width);
-
-   if (reg_flags(d, f, REG_DESCEND)) {
-      if (f->reg + 1 < num_regs) {
-         ERROR("too many descending registers");
-         return -1;
-      }
-   }
-
-   else { // ascending
-      if (f->reg + num_regs > d->reg_num) {
-         ERROR("too many ascending registers");
-         return -1;
-      }
-   }
-
-   return 0;
-}
 
 static int reg_check_fields(const struct reg_dev *const d, const size_t i)
 {
@@ -700,40 +705,29 @@ int reg_check(struct reg_dev *const d)
 /**
  * @brief Find a field by name.
  *
- * @param d Pointer to the device structure to query.
+ * @param map Pointer to the field map to search in.
  * @param field Null-terminated name of the field to find.
  * @return The requested field, or NULL on error.
  */
-static const struct reg_field *reg_find(const struct reg_dev *const d,
+static const struct reg_field *reg_find(const struct reg_field *const map,
                                         const char *const field)
 {
-   if (reg_empty(d))
+   if (!map) {
+      ERROR("no field map");
       return NULL;
+   }
 
    if (!field) {
       ERROR("missing field");
       return NULL;
    }
 
-   // search for field by name
    const struct reg_field *f = NULL;
-   for (size_t i = 0; d->field_map[i].name != NULL; i++) {
-      if (strcmp(d->field_map[i].name, field) == 0) {
-         f = &d->field_map[i];
+   for (size_t i = 0; map[i].name; i++) {
+      if (strcmp(map[i].name, field) == 0) {
+         f = &map[i];
          break;
       }
-   }
-
-   // not found
-   if (!f) {
-      ERROR("field name not found in field_map:");
-      ERROR(field);
-      return NULL;
-   }
-
-   if (reg_check_field_width(d, f)) {
-      ERROR("field width invalid");
-      return NULL;
    }
 
    return f;
@@ -751,7 +745,7 @@ uint64_t reg_get(struct reg_dev *const d, const char *const field)
       return 0;
    }
 
-   const uint64_t val = reg_get_field(d, reg_find(d, field));
+   const uint64_t val = reg_get_field(d, reg_find(d->field_map, field));
 
    if (reg_unlock(d)) {
       ERROR("cannot unlock the mutex");
@@ -774,7 +768,7 @@ int reg_set(struct reg_dev *const d, const char *const field,
       return -1;
    }
 
-   if (reg_set_field(d, reg_find(d, field), val)) {
+   if (reg_set_field(d, reg_find(d->field_map, field), val)) {
       ERROR("cannot set field");
       return -1;
    }
@@ -859,20 +853,37 @@ int reg_verify(struct reg_virt *v)
    if (reg_empty(&v->base))
       return -1;
 
+   // all fields must be present in at least one map
+   for (int i = 0; v->fields[i]; i++) {
+      const struct reg_field *f = NULL;
+      for (int j = 0; v->maps[j]; j++) {
+         f = reg_find(v->maps[j], v->fields[i]);
+         if (f)
+            break;
+      }
+
+      if (!f) {
+         ERROR("virtual field not mapped:");
+         ERROR(v->fields[i]);
+         return -1;
+      }
+   }
+
    return 0;
 }
 
-int reg_obtain(struct reg_virt *v, const char *field)
+uint64_t reg_obtain(struct reg_virt *v, const char *field)
 {
    if (reg_bad(v)) {
       ERROR("malformed virtual device");
       return -1;
    }
 
-   // TODO
-   (void)v;
-   (void)field;
+   for (int i = 0; v->fields[i]; i++)
+      if (strcmp(v->fields[i], field) == 0)
+         return v->data[i];
 
+   ERROR("virtual field not found");
    return 0;
 }
 
@@ -883,10 +894,64 @@ int reg_adjust(struct reg_virt *v, const char *field, uint64_t val)
       return -1;
    }
 
-   // TODO
-   (void)v;
-   (void)field;
-   (void)val;
+   // locate virtual field
+   bool found = false;
+   for (int i = 0; v->fields[i]; i++)
+      if (strcmp(v->fields[i], field) == 0) {
+         v->data[i] = val;
+         found      = true;
+         break;
+      }
+
+   if (!found) {
+      ERROR("did not find the virtual field");
+      return -1;
+   }
+
+   // look in the current map
+   const struct reg_field *f = reg_find(v->base.field_map, field);
+   if (f)
+      return reg_set_field(&v->base, f, val);
+
+   // not found: check the other maps
+   int id = 0;
+   for (id = 0; v->maps[id]; id++) {
+      f = reg_find(v->maps[id], field);
+      if (f)
+         break;
+   }
+
+   if (!f) {
+      ERROR("field name not found in field_map:");
+      ERROR(field);
+      return -1;
+   }
+
+   // load a new configuration
+   if (v->load_fn(v->base.arg, id)) {
+      ERROR("cannot load new device configuration");
+      return -1;
+   }
+
+   // record the new map
+   v->base.field_map = v->maps[id];
+
+   // clear device data
+   memset(v->base.data, 0, v->base.reg_num * sizeof(v->base.data[0]));
+
+   // re-set all fields in the new map
+   for (int i = 0; v->base.field_map[i].name; i++) {
+      const struct reg_field *fi = &v->base.field_map[i];
+
+      // use old virtual value for other fields
+      uint64_t fi_val = (fi == f) ? val : reg_obtain(v, fi->name);
+
+      if (reg_set_field(&v->base, fi, fi_val)) {
+         ERROR("could not set field:");
+         ERROR(fi->name);
+         return -1;
+      }
+   }
 
    return 0;
 }

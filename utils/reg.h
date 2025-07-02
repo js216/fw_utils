@@ -15,6 +15,9 @@
 #include <stddef.h>
 #include <stdint.h>
 
+// TODO: remove this
+#include <stdio.h>
+
 #define REG_READONLY  (1U << 0U)
 #define REG_WRITEONLY (1U << 1U)
 #define REG_VOLATILE  (1U << 2U)
@@ -463,11 +466,15 @@ int reg_set(struct reg_dev *d, const char *field, uint64_t val);
 /**
  * @subsubsection Virtual Fields: Unique and Shared
  *
- * A virtual device defines two matched arrays: `fields` is an array of strings
- * giving names to the available fields, while `data` contains their value. The
- * two arrays must be allocated to have the same number of elements (though not
- * necessarily bytes, in case `uint64_t` takes up a different amount of space
- * than a string pointer).
+ * A virtual device defines two matched arrays: `fields` is a null-terminated
+ * array of strings giving names to the available fields, while `data` contains
+ * their value. The two arrays must be allocated to have the same number of
+ * elements (though not necessarily bytes, in case `uint64_t` takes up a
+ * different amount of space than a string pointer). Thus, the last element of
+ * the data array is kept empty, as it corresponds to the `NULL` termination of
+ * the `fields` array.
+ *
+ * All virtual fields must be present in at least one of the maps.
  *
  * If a virtual field appears in only one of the possible maps corresponding to
  * that virtual device, it is considered *unique*. For a unique field, each
@@ -497,7 +504,7 @@ int reg_set(struct reg_dev *d, const char *field, uint64_t val);
  * Unlike adjusting the field value, obtaining it can return the value directly
  * from the data buffer and will not reload the map. In fact, there is no need
  * to consult the individual physical devices at all in the process. In other
- * words, the flag `REG_VOLATILE` is not supported for virtual devices.
+ * words, the flag `REG_VOLATILE` has no effect for virtual fields.
  */
 
 /**
@@ -506,12 +513,12 @@ int reg_set(struct reg_dev *d, const char *field, uint64_t val);
  * When a virtual field cannot be found in the currently loaded map, the code
  * will call a virtual device's `load_fn(int arg, int id)` to reconfigure the
  * hardware as appropriate. The function is given two arguments: `arg` is
- * whatever is set in the underlying device strucure (i.e., `vdev->base->arg`),
+ * whatever is set in the underlying device structure (i.e., `vdev->base->arg`),
  * while the `id` is the sequential number of the requested new field map. The
  * numbering starts with 0 and matches the order the maps are listed in
  * `vdev->maps`.
  *
- * Assuming the load function succeded (i.e., returned 0), we then re-set all
+ * Assuming the load function succeeded (i.e., returned 0), we then re-set all
  * the values of all the fields that are present in the new map, both unique
  * and shared. To prevent re-setting a field value, set the `REG_NORESET` flag
  * for the relevant field or device.
