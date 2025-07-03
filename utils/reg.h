@@ -534,7 +534,8 @@ int reg_set(struct reg_dev *d, const char *field, uint64_t val);
  * values that are legal in the new map before triggering setting a field not
  * present in the current map. Alternatively, set the `REG_NORESET` flag on the
  * field in the new map to prevent setting values that are potentially too
- * large.
+ * large. All fields starting with underscore behave as if they had
+ * `REG_NORESET` set.
  */
 
 /**

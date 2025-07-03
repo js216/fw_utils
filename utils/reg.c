@@ -88,6 +88,21 @@ static inline uint32_t reg_mask32(size_t start, size_t len)
    return (uint32_t)reg_mask64(start, len);
 }
 
+/**
+ * @brief Check if a value fits in a field of given width.
+ * @param val Value to check.
+ * @param width Number of bits in the target register
+ * @return true if it fits, false if not.
+ */
+static bool reg_fits(uint64_t val, size_t width)
+{
+   if (width < 64)
+      return ((val >> width) == 0);
+
+   // uint64_t will always fit into 64-bit registers (or wider)
+   return true;
+}
+
 /***********************************************************
  * GENERAL HELPER FUNCTIONS
  ***********************************************************/
@@ -512,7 +527,7 @@ static int reg_set_field(struct reg_dev *const d,
       return -1;
    }
 
-   if (f->width < 64 && (val >> f->width) != 0) {
+   if (!reg_fits(val, f->width)) {
       ERROR("value too large for field width");
       return -1;
    }
@@ -888,7 +903,8 @@ uint64_t reg_obtain(struct reg_virt *v, const char *field)
       if (strcmp(v->fields[i], field) == 0)
          return v->data[i];
 
-   ERROR("virtual field not found");
+   ERROR("virtual field not found:");
+   ERROR(field);
    return 0;
 }
 
@@ -915,14 +931,14 @@ int reg_adjust(struct reg_virt *v, const char *field, uint64_t val)
 
    // look in the current map
    const struct reg_field *f = reg_find(v->base.field_map, field);
-   if (f)
+   if (f && reg_fits(val, f->width))
       return reg_set_field(&v->base, f, val);
 
-   // not found: check the other maps
+   // not found: check the other maps for match and fit
    int id = 0;
    for (id = 0; v->maps[id]; id++) {
       f = reg_find(v->maps[id], field);
-      if (f)
+      if (f && (reg_fits(val, f->width)))
          break;
    }
 
@@ -938,8 +954,13 @@ int reg_adjust(struct reg_virt *v, const char *field, uint64_t val)
       return -1;
    }
 
-   // record the new map
-   v->base.field_map = v->maps[id];
+   // record the new map, if found
+   if (v->maps[id]) {
+      v->base.field_map = v->maps[id];
+   } else {
+      ERROR("new map is NULL");
+      return -1;
+   }
 
    // clear device data
    memset(v->base.data, 0, v->base.reg_num * sizeof(v->base.data[0]));
@@ -948,8 +969,9 @@ int reg_adjust(struct reg_virt *v, const char *field, uint64_t val)
    for (int i = 0; v->base.field_map[i].name; i++) {
       const struct reg_field *fi = &v->base.field_map[i];
 
-      // skip re-setting fields with the REG_NORESET flag
-      if ((fi != f) && reg_flags(&v->base, fi, REG_NORESET))
+      // skip re-setting REG_NORESET and underscore fields
+      if ((fi != f) &&
+          (reg_flags(&v->base, fi, REG_NORESET) || (fi->name[0] == '_')))
          continue;
 
       // use old virtual value for other fields

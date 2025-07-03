@@ -28,10 +28,11 @@ static const struct reg_field map1[] = {
 
 static const struct reg_field map2[] = {
     //    reg of wd flags
-    {"P",  0, 0, 8,  0          },
-    {"Q",  0, 8, 8,  REG_NORESET},
-    {"A",  1, 0, 16, 0          },
-    {NULL, 0, 0, 0,  0          }
+    {"P",  0, 0,  8,  0          },
+    {"Q",  0, 8,  4,  REG_NORESET},
+    {"_Q", 0, 12, 4,  0          },
+    {"A",  1, 0,  16, 0          },
+    {NULL, 0, 0,  0,  0          }
 };
 
 static const struct reg_field map3[] = {
@@ -40,7 +41,7 @@ static const struct reg_field map3[] = {
     {NULL, 0, 0, 0,  0}
 };
 
-static const char *virt_fields[]           = {"A", "B", "C", "P", "Q", NULL};
+static const char *virt_fields[] = {"A", "B", "C", "P", "Q", "_Q", NULL};
 static const struct reg_field *virt_maps[] = {map1, map2, map3, NULL};
 
 struct test_cases {
@@ -54,17 +55,18 @@ struct test_cases {
 static const struct test_cases tc_good[] = {
     {"A",  0xff,   {0xff, 0, 0, 0, 0, 0},            {0x00ff, 0x0000, 0, 0}, 0},
     {"P",  0xff,   {0xff, 0, 0, 0xff, 0, 0},         {0x00ff, 0x00ff, 0, 0}, 1},
-    {"Q",  0x67,   {0xff, 0, 0, 0xff, 0x67, 0},      {0x67ff, 0x00ff, 0, 0}, 1},
-    {"B",  0xff,   {0xff, 0xff, 0, 0xff, 0x67, 0},   {0xffff, 0x0000, 0, 0}, 0},
-    {"B",  0xff,   {0xff, 0xff, 0, 0xff, 0x67, 0},   {0xffff, 0x0000, 0, 0}, 0},
-    {"A",  0x00,   {0, 0xff, 0, 0xff, 0x67, 0},      {0xff00, 0x0000, 0, 0}, 0},
-    {"C",  0xffff, {0, 0xff, 0xffff, 0xff, 0x67, 0}, {0xff00, 0xffff, 0, 0}, 0},
-    {"C",  0x98,   {0, 0xff, 0x98, 0xff, 0x67, 0},   {0xff00, 0x0098, 0, 0}, 0},
-    {"P",  0xff,   {0, 0xff, 0x98, 0xff, 0x67, 0},   {0x00ff, 0x0000, 0, 0}, 1},
+    {"Q",  0x01,   {0xff, 0, 0, 0xff, 0x01, 0},      {0x01ff, 0x00ff, 0, 0}, 1},
+    {"B",  0xff,   {0xff, 0xff, 0, 0xff, 0x01, 0},   {0xffff, 0x0000, 0, 0}, 0},
+    {"B",  0xff,   {0xff, 0xff, 0, 0xff, 0x01, 0},   {0xffff, 0x0000, 0, 0}, 0},
+    {"A",  0x00,   {0, 0xff, 0, 0xff, 0x01, 0},      {0xff00, 0x0000, 0, 0}, 0},
+    {"C",  0xffff, {0, 0xff, 0xffff, 0xff, 0x01, 0}, {0xff00, 0xffff, 0, 0}, 0},
+    {"C",  0x98,   {0, 0xff, 0x98, 0xff, 0x01, 0},   {0xff00, 0x0098, 0, 0}, 0},
+    {"P",  0xff,   {0, 0xff, 0x98, 0xff, 0x01, 0},   {0x00ff, 0x0000, 0, 0}, 1},
     {"Q",  0x00,   {0, 0xff, 0x98, 0xff, 0x00, 0},   {0x00ff, 0x0000, 0, 0}, 1},
     {"A",  0xffff, {0xffff, 0xff, 0x98, 0xff, 0, 0}, {0x00ff, 0xffff, 0, 0}, 1},
     {"A",  0x73,   {0x73, 0xff, 0x98, 0xff, 0, 0},   {0x00ff, 0x0073, 0, 0}, 1},
     {"B",  0x67,   {0x73, 0x67, 0x98, 0xff, 0, 0},   {0x6773, 0x0098, 0, 0}, 0},
+    {"A",  0xeeee, {0xeeee, 0x67, 0x98, 0xff, 0, 0}, {0x00ff, 0xeeee, 0, 0}, 1},
     {NULL, 0,      {0},                              {0},                    0},
 };
 
@@ -165,13 +167,13 @@ static int check_cases(const struct test_cases *tc)
          return -1;
       }
 
-      if (vdev.base.field_map != virt_maps[tc[i].correct_map]) {
-         ERROR("using the wrong map");
+      if (mock_map_id != tc[i].correct_map) {
+         ERROR("loaded the wrong map");
          return -1;
       }
 
-      if (mock_map_id != tc[i].correct_map) {
-         ERROR("loaded the wrong map");
+      if (vdev.base.field_map != virt_maps[tc[i].correct_map]) {
+         ERROR("using the wrong map");
          return -1;
       }
 
