@@ -90,6 +90,7 @@ static inline uint32_t reg_mask32(size_t start, size_t len)
 
 /**
  * @brief Check if a value fits in a field of given width.
+ *
  * @param val Value to check.
  * @param width Number of bits in the target register
  * @return true if it fits, false if not.
@@ -133,6 +134,7 @@ static inline bool reg_flags(const struct reg_dev *const d,
 
 /**
  * @brief Check that all the usual fields are filled out.
+ *
  * @return 0 on success, or -1 on failure.
  */
 static int reg_empty(const struct reg_dev *const d)
@@ -181,6 +183,7 @@ static int reg_empty(const struct reg_dev *const d)
 
 /**
  * @brief Lock a mutex, if a mutex is provided.
+ *
  * @return 0 on success, -1 on error.
  */
 static int reg_lock(struct reg_dev *d)
@@ -204,6 +207,7 @@ static int reg_lock(struct reg_dev *d)
 
 /**
  * @brief Unlock a mutex, if a mutex is provided.
+ *
  * @return 0 on success, -1 on error.
  */
 static int reg_unlock(struct reg_dev *d)
@@ -312,6 +316,7 @@ int reg_bulk(struct reg_dev *d, const uint32_t *data)
 
 /**
  * @brief Get mask of register bits occupied by field bits.
+ *
  * @param n Field chunk number, starting from n=0 for the first, least
  * significant, chunk (the one located in register f->reg).
  * @param f_offs Field offset.
@@ -588,6 +593,7 @@ static int reg_clear_buffer(struct reg_dev *d)
 
 /**
  * @brief Check no field overlaps with the given one.
+ *
  * @param d Pointer to the device structure to query.
  * @param i Field number to check, from 0 to number of fields.
  * @return 0 on success, -1 on error.
@@ -807,6 +813,7 @@ int reg_set(struct reg_dev *const d, const char *const field,
 
 /**
  * @brief Check that all the virtual device fields are filled out.
+ *
  * @param `v` Virtual device data structure to verify.
  * @return 0 on success, or -1 on failure.
  */
@@ -842,6 +849,7 @@ static int reg_bad(const struct reg_virt *const v)
 
 /**
  * @brief Test underlying physical device for all available maps.
+ *
  * @param `v` Virtual device data structure to verify.
  * @return 0 on success, or -1 on failure.
  */
@@ -908,7 +916,47 @@ uint64_t reg_obtain(struct reg_virt *v, const char *field)
    return 0;
 }
 
-int reg_adjust(struct reg_virt *v, const char *field, uint64_t val)
+/**
+ * @brief Re-set all physical device fields from the virtual device.
+ *
+ * @param v Virtual device affected.
+ * @param except All fields will be re-set except this one.
+ * @return 0 on success, -1 on failure.
+ */
+static int reg_reset(struct reg_virt *v, const struct reg_field *const except)
+{
+   // clear device data
+   memset(v->base.data, 0, v->base.reg_num * sizeof(v->base.data[0]));
+
+   // re-set all fields in the currently-loaded device map
+   for (int i = 0; v->base.field_map[i].name; i++) {
+      const struct reg_field *fi = &v->base.field_map[i];
+      if (!fi) {
+         ERROR("NULL field");
+         return -1;
+      }
+
+      // skip re-setting REG_NORESET and underscore fields
+      if ((fi != except) &&
+          (reg_flags(&v->base, fi, REG_NORESET) || (fi->name[0] == '_')))
+         continue;
+
+      // skip re-setting fields that don't fit
+      uint64_t fi_val = reg_obtain(v, fi->name);
+      if (!reg_fits(fi_val, fi->width))
+         continue;
+
+      if (reg_set_field(&v->base, fi, fi_val)) {
+         ERROR("could not set field:");
+         ERROR(fi->name);
+         return -1;
+      }
+   }
+
+   return 0;
+}
+
+int reg_adjust(struct reg_virt *v, const char *const field, uint64_t val)
 {
    if (reg_bad(v)) {
       ERROR("malformed virtual device");
@@ -931,14 +979,15 @@ int reg_adjust(struct reg_virt *v, const char *field, uint64_t val)
 
    // look in the current map
    const struct reg_field *f = reg_find(v->base.field_map, field);
-   if (f && reg_fits(val, f->width))
+   if (f && reg_fits(val, f->width)) {
       return reg_set_field(&v->base, f, val);
+   }
 
    // not found: check the other maps for match and fit
    int id = 0;
    for (id = 0; v->maps[id]; id++) {
       f = reg_find(v->maps[id], field);
-      if (f && (reg_fits(val, f->width)))
+      if (f && reg_fits(val, f->width))
          break;
    }
 
@@ -962,26 +1011,9 @@ int reg_adjust(struct reg_virt *v, const char *field, uint64_t val)
       return -1;
    }
 
-   // clear device data
-   memset(v->base.data, 0, v->base.reg_num * sizeof(v->base.data[0]));
-
-   // re-set all fields in the new map
-   for (int i = 0; v->base.field_map[i].name; i++) {
-      const struct reg_field *fi = &v->base.field_map[i];
-
-      // skip re-setting REG_NORESET and underscore fields
-      if ((fi != f) &&
-          (reg_flags(&v->base, fi, REG_NORESET) || (fi->name[0] == '_')))
-         continue;
-
-      // use old virtual value for other fields
-      uint64_t fi_val = (fi == f) ? val : reg_obtain(v, fi->name);
-
-      if (reg_set_field(&v->base, fi, fi_val)) {
-         ERROR("could not set field:");
-         ERROR(fi->name);
-         return -1;
-      }
+   if (reg_reset(v, f)) {
+      ERROR("cannot re-set fields");
+      return -1;
    }
 
    return 0;

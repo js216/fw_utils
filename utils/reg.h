@@ -527,15 +527,18 @@ int reg_set(struct reg_dev *d, const char *field, uint64_t val);
  * its old value whenever the application requires it, rather than always after
  * re-loading configurations.
  *
- * An error will be reported if loading a map requires re-setting a field whose
- * value is too large to fit in to new map. For example, if the old map defines
- * a 16-bit field `"F"`, while the new map defines `"F"` to have only 8 bits,
- * that constitutes an error condition. Make sure that all fields are set to
- * values that are legal in the new map before triggering setting a field not
- * present in the current map. Alternatively, set the `REG_NORESET` flag on the
- * field in the new map to prevent setting values that are potentially too
- * large. All fields starting with underscore behave as if they had
- * `REG_NORESET` set.
+ * If loading a map requires re-setting a field whose value is too large to fit
+ * in to new map, the value of the field will be retained in the virtual device
+ * buffer, but will not be transferred to the physical device, nor will it be
+ * recorded in the physical device buffer. For example, if the old map defines a
+ * 16-bit field `"F"`, while the new map defines `"F"` to have only 8 bits, then
+ * on re-loading, this field will not be re-set automatically. However, if the
+ * configuration is reloaded yet again, such that the field again has
+ * sufficient width, then it will be transferred.
+ *
+ * Set the `REG_NORESET` flag on the field in the new map to prevent setting
+ * values automatically on reload. Fields starting with underscore behave as if
+ * they had `REG_NORESET` set.
  */
 
 /**
