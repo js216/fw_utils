@@ -188,8 +188,10 @@ static int reg_empty(const struct reg_dev *const d)
  */
 static int reg_lock(struct reg_dev *d)
 {
-   if (reg_empty(d))
+   if (reg_empty(d)) {
+      ERROR("invalid device");
       return -1;
+   }
 
    if (d->mutex && d->lock_fn && (*d->lock_fn)(d->mutex)) {
       ERROR("lock failed");
@@ -212,8 +214,10 @@ static int reg_lock(struct reg_dev *d)
  */
 static int reg_unlock(struct reg_dev *d)
 {
-   if (reg_empty(d))
+   if (reg_empty(d)) {
+      ERROR("invalid device");
       return -1;
+   }
 
    if (d->mutex && d->unlock_fn && (*d->unlock_fn)(d->mutex)) {
       ERROR("unlock failed");
@@ -231,8 +235,10 @@ static int reg_unlock(struct reg_dev *d)
 
 uint32_t reg_read(struct reg_dev *d, const size_t reg)
 {
-   if (reg_empty(d))
+   if (reg_empty(d)) {
+      ERROR("invalid device");
       return 0;
+   }
 
    if (reg >= d->reg_num) {
       ERROR("register outside device bounds");
@@ -258,8 +264,10 @@ uint32_t reg_read(struct reg_dev *d, const size_t reg)
 
 int reg_write(struct reg_dev *d, size_t reg, const uint32_t val)
 {
-   if (reg_empty(d))
+   if (reg_empty(d)) {
+      ERROR("invalid device");
       return -1;
+   }
 
    if (reg >= d->reg_num) {
       ERROR("register outside device bounds");
@@ -284,8 +292,10 @@ int reg_write(struct reg_dev *d, size_t reg, const uint32_t val)
 
 int reg_bulk(struct reg_dev *d, const uint32_t *data)
 {
-   if (reg_empty(d))
+   if (reg_empty(d)) {
+      ERROR("invalid device");
       return -1;
+   }
 
    if (d->reg_num == 0) {
       // no-op: zero registers to copy
@@ -355,8 +365,10 @@ static uint32_t reg_field_mask(const uint8_t n, const uint8_t f_offs,
 static uint64_t reg_get_chunk(struct reg_dev *const d,
                               const struct reg_field *const f, const uint8_t n)
 {
-   if (reg_empty(d))
+   if (reg_empty(d)) {
+      ERROR("invalid device");
       return 0;
+   }
 
    if (!f) {
       ERROR("null field passed");
@@ -415,8 +427,10 @@ static int reg_set_chunk(struct reg_dev *const d,
                          const struct reg_field *const f, const uint8_t n,
                          uint64_t val)
 {
-   if (reg_empty(d))
+   if (reg_empty(d)) {
+      ERROR("invalid device");
       return -1;
+   }
 
    if (!f) {
       ERROR("null field passed");
@@ -494,8 +508,10 @@ static int reg_check_field_width(const struct reg_dev *const d,
 static uint64_t reg_get_field(struct reg_dev *const d,
                               const struct reg_field *const f)
 {
-   if (reg_empty(d))
+   if (reg_empty(d)) {
+      ERROR("invalid device");
       return 0;
+   }
 
    if (!f) {
       ERROR("invalid field");
@@ -519,8 +535,10 @@ static uint64_t reg_get_field(struct reg_dev *const d,
 static int reg_set_field(struct reg_dev *const d,
                          const struct reg_field *const f, const uint64_t val)
 {
-   if (reg_empty(d))
+   if (reg_empty(d)) {
+      ERROR("invalid device");
       return -1;
+   }
 
    if (!f) {
       ERROR("invalid field");
@@ -582,8 +600,10 @@ static int reg_check_fields(const struct reg_dev *const d, const size_t i)
 
 static int reg_clear_buffer(struct reg_dev *d)
 {
-   if (reg_empty(d))
+   if (reg_empty(d)) {
+      ERROR("invalid device");
       return -1;
+   }
 
    for (size_t i = 0; i < d->reg_num; i++)
       d->data[i] = 0;
@@ -679,8 +699,10 @@ static int reg_check_field_partial_coverage(struct reg_dev *d)
 
 int reg_check(struct reg_dev *const d)
 {
-   if (reg_empty(d))
+   if (reg_empty(d)) {
+      ERROR("invalid device");
       return -1;
+   }
 
    if ((d->lock_fn && !d->unlock_fn) || (!d->lock_fn && d->unlock_fn)) {
       ERROR("both or none of lock_fn, unlock_fn must be given");
@@ -771,7 +793,13 @@ uint64_t reg_get(struct reg_dev *const d, const char *const field)
       return 0;
    }
 
-   const uint64_t val = reg_get_field(d, reg_find(d->field_map, field));
+   const struct reg_field *f = reg_find(d->field_map, field);
+   if (!f) {
+      ERROR("cannot find field");
+      return 0;
+   }
+
+   const uint64_t val = reg_get_field(d, f);
 
    if (reg_unlock(d)) {
       ERROR("cannot unlock the mutex");
@@ -794,7 +822,13 @@ int reg_set(struct reg_dev *const d, const char *const field,
       return -1;
    }
 
-   if (reg_set_field(d, reg_find(d->field_map, field), val)) {
+   const struct reg_field *f = reg_find(d->field_map, field);
+   if (!f) {
+      ERROR("cannot find field");
+      return 0;
+   }
+
+   if (reg_set_field(d, f, val)) {
       ERROR("cannot set field");
       return -1;
    }
@@ -878,8 +912,10 @@ int reg_verify(struct reg_virt *v)
       return -1;
    }
 
-   if (reg_empty(&v->base))
+   if (reg_empty(&v->base)) {
+      ERROR("invalid device");
       return -1;
+   }
 
    // all fields must be present in at least one map
    for (int i = 0; v->fields[i]; i++) {
@@ -896,6 +932,9 @@ int reg_verify(struct reg_virt *v)
          return -1;
       }
    }
+
+   // clear map, to be initialized on first reg_adjust
+   v->base.field_map = NULL;
 
    return 0;
 }
@@ -975,6 +1014,15 @@ int reg_adjust(struct reg_virt *v, const char *const field, uint64_t val)
    if (!found) {
       ERROR("did not find the virtual field");
       return -1;
+   }
+
+   // install default map, if missing (the first one, id = 0)
+   if (!v->base.field_map) {
+      if (v->load_fn(v->base.arg, 0)) {
+         ERROR("cannot load new device configuration");
+         return -1;
+      }
+      v->base.field_map = v->maps[0];
    }
 
    // look in the current map
