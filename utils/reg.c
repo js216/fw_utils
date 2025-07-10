@@ -51,15 +51,19 @@ static inline size_t reg_cdiv(size_t x, size_t y)
  *
  * @param start Starting bit position (0-based).
  * @param len Number of bits to set.
- * @return Bitmask with bits set in [start, start+len-1].
+ * @return Bitmask with bits set in [start, start+len-1], or 0 on error.
  */
-static inline uint64_t reg_mask64(size_t start, size_t len)
+uint64_t reg_mask64(size_t start, size_t len)
 {
-   if ((len == 0) || (len > MAX_FIELD))
+   if ((len == 0) || (len > MAX_FIELD)) {
+      ERROR("invalid mask length");
       return 0;
+   }
 
-   if ((start >= MAX_FIELD) || ((start + len) > MAX_FIELD))
+   if ((start >= MAX_FIELD) || ((start + len) > MAX_FIELD)) {
+      ERROR("invalid mask start");
       return 0;
+   }
 
    uint64_t mask = (len == MAX_FIELD) ? UINT64_MAX : (1ULL << len) - 1;
 
@@ -77,13 +81,17 @@ static inline uint64_t reg_mask64(size_t start, size_t len)
  * @param len Number of bits to set.
  * @return Bitmask with bits set in [start, start+len-1].
  */
-static inline uint32_t reg_mask32(size_t start, size_t len)
+uint32_t reg_mask32(size_t start, size_t len)
 {
-   if ((len == 0) || (len > MAX_REG))
+   if ((len == 0) || (len > MAX_REG)) {
+      ERROR("invalid mask len");
       return 0;
+   }
 
-   if ((start >= MAX_REG) || ((start + len) > MAX_REG))
+   if ((start >= MAX_REG) || ((start + len) > MAX_REG)) {
+      ERROR("invalid mask start");
       return 0;
+   }
 
    return (uint32_t)reg_mask64(start, len);
 }
@@ -841,6 +849,22 @@ int reg_set(struct reg_dev *const d, const char *const field,
    return 0;
 }
 
+uint8_t reg_fwidth(const struct reg_dev *const d, const char *const field)
+{
+   if (!field) {
+      ERROR("missing field");
+      return -1;
+   }
+
+   const struct reg_field *f = reg_find(d->field_map, field);
+   if (!f) {
+      // not an error: can use this functio to check if a field is present
+      return -1;
+   }
+
+   return f->width;
+}
+
 /***********************************************************
  * VIRTUAL DEVICES
  ***********************************************************/
@@ -1037,10 +1061,11 @@ int reg_adjust(struct reg_virt *v, const char *const field, uint64_t val)
       f = reg_find(v->maps[id], field);
       if (f && reg_fits(val, f->width))
          break;
+      f = NULL; // if found but doesn't fit
    }
 
    if (!f) {
-      ERROR("field name not found in field_map:");
+      ERROR("field not found in field_map (or value too big):");
       ERROR(field);
       return -1;
    }

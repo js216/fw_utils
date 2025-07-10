@@ -73,7 +73,7 @@ static const struct test_cases tc_good[] = {
 };
 
 // map2:A (16 bits) does not fit into map1:A (8 bits)
-static const struct test_cases tc_bad[] = {
+static const struct test_cases tc_bad1[] = {
     {"A",  0xff,  {0xff, 0, 0, 0, 0, 0},        {0x00ff, 0x0000, 0, 0}, 0},
     {"P",  0xff,  {0xff, 0, 0, 0xff, 0, 0},     {0x00ff, 0x00ff, 0, 0}, 1},
     {"A",  0xaaa, {0xaaa, 0, 0, 0xff, 0, 0},    {0x00ff, 0x0aaa, 0, 0}, 1},
@@ -216,7 +216,7 @@ static int test_good(void)
 
 static int test_bad(void)
 {
-   return !check_cases(tc_bad);
+   return !check_cases(tc_bad1);
 }
 
 int test_reg_virt(void)

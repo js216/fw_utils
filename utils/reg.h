@@ -116,6 +116,24 @@ struct reg_virt {
  */
 
 /**
+ * @subsection Helper functions
+ */
+
+/// @func Create a bitmask of consecutive bits set within a 64-bit word.
+uint64_t reg_mask64(size_t start, size_t len);
+/// @param start Starting bit position (0-based).
+/// @param len Number of bits to set.
+/// @return Bitmask with bits set in [start, start+len-1], or 0 on error.
+/// @endfunc
+
+/// @func Create a bitmask of consecutive bits set within a 32-bit word.
+uint32_t reg_mask32(size_t start, size_t len);
+/// @param start Starting bit position (0-based).
+/// @param len Number of bits to set.
+/// @return Bitmask with bits set in [start, start+len-1], or 0 on error.
+/// @endfunc
+
+/**
  * @subsection ``Raw'' Register Access
  *
  * These functions are not intended to be used with explicit (literal)
@@ -382,9 +400,16 @@ uint64_t reg_get(struct reg_dev *d, const char *field);
 /// @func Set the value of a given field on the physical device.
 int reg_set(struct reg_dev *d, const char *field, uint64_t val);
 /// @param `d` Device data structure to modify.
-/// @param `val` Value to set in the field.
 /// @param `field` Null-terminated field name.
+/// @param `val` Value to set in the field.
 /// @return 0 on success, $-1$ on failure.
+/// @endfunc
+
+/// @func Get field width.
+uint8_t reg_fwidth(const struct reg_dev *d, const char *field);
+/// @param `d` Device data structure to modify.
+/// @param `field` Null-terminated field name.
+/// @return -1 if field not present in device, otherwise its width.
 /// @endfunc
 
 /**
