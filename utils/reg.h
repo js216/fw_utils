@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: MIT
 /**
  * @file reg.h: Register representation and handling
  *
@@ -7,71 +6,14 @@
  *
  * @author Jakob Kastelic
  * @copyright Copyright (c) 2025 Stanford Research Systems, Inc.
- */
-
-#ifndef REG_H
-#define REG_H
-
-#include <stddef.h>
-#include <stdint.h>
-
-#define REG_READONLY  (1U << 0U)
-#define REG_WRITEONLY (1U << 1U)
-#define REG_VOLATILE  (1U << 2U)
-#define REG_NOCOMM    (1U << 3U)
-#define REG_ALIAS     (1U << 4U)
-#define REG_DESCEND   (1U << 5U)
-#define REG_MSR_FIRST (1U << 6U)
-#define REG_NORESET   (1U << 7U)
-
-struct reg_field {
-   const char *name;
-   const size_t reg;
-   const uint8_t offs;
-   const uint8_t width;
-   const uint16_t flags;
-};
-
-struct reg_dev {
-   uint16_t flags;
-
-   // register map
-   uint8_t reg_width;
-   size_t reg_num;
-   const struct reg_field *field_map;
-
-   // physical read/write
-   int arg;
-   uint32_t (*read_fn)(int arg, size_t reg);
-   int (*write_fn)(int arg, size_t reg, uint32_t val);
-
-   // data buffer
-   uint32_t *data;
-   void *mutex;
-   int (*lock_fn)(void *mutex);
-   int (*unlock_fn)(void *mutex);
-   int lock_count;
-};
-
-struct reg_virt {
-   const char **fields;
-   uint64_t *data;
-   const struct reg_field **maps;
-   int (*load_fn)(int arg, int id);
-   struct reg_dev base;
-};
-
-/**
- * *Method summary:*
- * @allfunc
- * Please refer to the detailed function documentation in the following pages.
+ * @license SPDX-License-Identifier: MIT
  */
 
 /**
- * @subsection A Simple Example
+ * @subsection Introduction
  *
- * To start, define the register map with only the fields that are needed in
- * the application (even if the underlying device has more):
+ * The goal is to be able to define a register map for a device by writing a
+ * table such as the following:
  *
  *     const struct reg_field dev_map[] = {
  *        // name  reg  offs width flags
@@ -102,8 +44,7 @@ struct reg_virt {
  * whose data has been changed to the underlying physical device, just call
  * `reg_set()`:
  *
- *     if (reg_set(&dev, "MODE", 0x03U))
- *        ;// handle the error
+ *     reg_set(&dev, "MODE", 0x03U)
  *
  * The data has now been transferred to the physical device and is also stored
  * in the buffer. To retrieve the value from the buffer:
@@ -113,6 +54,85 @@ struct reg_virt {
  * To force re-reading the field from the physical device, set the
  * `REG_VOLATILE` field or device flag. Additional flags are documented in the
  * following sections.
+ */
+
+/**
+ * \newpage
+ * First, the header include guard and some standard library includes:
+ */
+
+#ifndef REG_H
+#define REG_H
+
+#include <stddef.h>
+#include <stdint.h>
+
+/**
+ * Define flags for devices and register fields (explained in detail later):
+ */
+
+#define REG_READONLY  (1U << 0U)
+#define REG_WRITEONLY (1U << 1U)
+#define REG_VOLATILE  (1U << 2U)
+#define REG_NOCOMM    (1U << 3U)
+#define REG_ALIAS     (1U << 4U)
+#define REG_DESCEND   (1U << 5U)
+#define REG_MSR_FIRST (1U << 6U)
+#define REG_NORESET   (1U << 7U)
+
+/**
+ * Each field in a register map is of the following type:
+ */
+
+struct reg_field {
+   const char *name;
+   const size_t reg;
+   const uint8_t offs;
+   const uint8_t width;
+   const uint16_t flags;
+};
+
+/**
+ * A physical device is represented as `struct reg_dev`:
+ */
+
+struct reg_dev {
+   uint16_t flags;
+
+   // register map
+   uint8_t reg_width;
+   size_t reg_num;
+   const struct reg_field *field_map;
+
+   // physical read/write
+   int arg;
+   uint32_t (*read_fn)(int arg, size_t reg);
+   int (*write_fn)(int arg, size_t reg, uint32_t val);
+
+   // data buffer
+   uint32_t *data;
+   void *mutex;
+   int (*lock_fn)(void *mutex);
+   int (*unlock_fn)(void *mutex);
+   int lock_count;
+};
+
+/**
+ * Finally, the ``virtual device'' structure:
+ */
+
+struct reg_virt {
+   const char **fields;
+   uint64_t *data;
+   const struct reg_field **maps;
+   int (*load_fn)(int arg, int id);
+   struct reg_dev base;
+};
+
+/**
+ * *Method summary:*
+ * @allfunc
+ * Please refer to the detailed function documentation in the following pages.
  */
 
 /**

@@ -32,6 +32,7 @@ class C2TexConverter:
             '@return': r'\return',
             '@subsection': r'\subsection',
             '@subsubsection': r'\subsubsection*',
+            '@license': r'\license',
             '@paragraph': r'\paragraph',
             '@api': r'\api',
             '@begin': r'\begin',
