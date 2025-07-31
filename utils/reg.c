@@ -727,6 +727,9 @@ int reg_check(struct reg_dev *const d)
    const uint16_t flags = d->flags;
    d->flags |= REG_NOCOMM;
 
+   if (reg_clear_buffer(d))
+      return -1;
+
    for (size_t i = 0; d->field_map[i].name; i++) {
       if (reg_check_fields(d, i))
          return -1;
