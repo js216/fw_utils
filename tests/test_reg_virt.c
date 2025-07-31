@@ -41,7 +41,7 @@ static const struct reg_field map3[] = {
     {NULL, 0, 0, 0,  0}
 };
 
-static const char *virt_fields[] = {"A", "B", "C", "P", "Q", "_Q", NULL};
+static const char *virt_fields[] = {"A", "B", "C", "P", "Q", "_N", NULL};
 static const struct reg_field *virt_maps[] = {map1, map2, map3, NULL};
 
 struct test_cases {
@@ -69,6 +69,7 @@ static const struct test_cases tc_good[] = {
     {"A",  0xeeee, {0xeeee, 0x67, 0x98, 0xff, 0, 0}, {0x00ff, 0xeeee, 0, 0}, 1},
     {"B",  0x68,   {0xeeee, 0x68, 0x98, 0xff, 0, 0}, {0x6800, 0x0098, 0, 0}, 0},
     {"P",  0xcc,   {0xeeee, 0x68, 0x98, 0xcc, 0, 0}, {0x00cc, 0xeeee, 0, 0}, 1},
+    {"_N", 0x09,   {0xeeee, 0x68, 0x98, 0xcc, 0, 9}, {0x00cc, 0xeeee, 0, 0}, 1},
     {NULL, 0,      {0},                              {0},                    0},
 };
 

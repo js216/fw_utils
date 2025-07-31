@@ -33,6 +33,26 @@ static int test_write_fn(int arg, size_t reg, uint32_t val)
    return 0;
 }
 
+static int test_reg_fwidth(struct reg_dev *dev)
+{
+   // skip missing maps
+   if (!dev->field_map)
+      return 0;
+
+   const struct reg_field *f = &dev->field_map[0];
+   while (f && f->name) {
+      // skip underscore fields, since they can all have the same name
+      if (f->name[0] != '_')
+         if (reg_fwidth(dev, f->name) != f->width) {
+            TEST_FAIL("Width mismatch for field %s: %d != %d", f->name,
+                      reg_fwidth(dev, f->name), f->width);
+            return -1;
+         }
+      f++;
+   }
+   return 0;
+}
+
 static int test_reg_check_map(const struct map_test *mt, size_t len)
 {
    for (size_t i = 0; i < len; i++) {
@@ -57,6 +77,13 @@ static int test_reg_check_map(const struct map_test *mt, size_t len)
          patched.write_fn  = test_write_fn;
       }
 
+      // test reg_fwidth()
+      if (test_reg_fwidth(&patched)) {
+         TEST_FAIL("error in testing fwidth");
+         return -1;
+      }
+
+      // run reg_check()
       int ret = reg_check(mt[i].desc[0] == 'n' ? NULL : &patched);
       if ((ret == 0) != mt[i].expect_ok) {
          TEST_FAIL("case %zu: %s", i, mt[i].desc);

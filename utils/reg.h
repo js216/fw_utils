@@ -313,7 +313,9 @@ int reg_bulk(struct reg_dev *d, const uint32_t *data);
  * @begin itemize
  *
  * @item `REG_VOLATILE` means that each time we get a field value, the register
- * in which the field resides will be read anew from the physical device.
+ * in which the field resides will be read anew from the physical device. Note
+ * that this field is not currently supported for virtual devices; virtual
+ * fields are always read directly from the data buffer.
  *
  * @item `REG_NOCOMM` will disable, for the field or device on which it is set,
  * all reading and writing of data to the physical device. This flag overrides
@@ -547,6 +549,25 @@ uint8_t reg_fwidth(const struct reg_dev *d, const char *field);
  * from the data buffer and will not reload the map. In fact, there is no need
  * to consult the individual physical devices at all in the process. In other
  * words, the flag `REG_VOLATILE` has no effect for virtual fields.
+ */
+
+/**
+ * @subsubsection Non-Physical Fields
+ *
+ * Virtual fields that start with an underscore are considered ``non-physical''
+ * fields, meaning their value can be stored and retrieved in the data buffer,
+ * but they never get written to or read from the physical device.
+ *
+ * Non-physical fields are expected to be used to record information relevant to
+ * the device, but which is of use only to the software, not the device itself.
+ * Therefore it is up to the device to make sure that the extra state encoded in
+ * the non-physical field is consistent and up to date with the rest of the
+ * device state.
+ *
+ * Non-physical fields should not share their name with any field on the
+ * physical (non-virtual) device, otherwise the physical field will be
+ * inaccessible. The software does not check for this conflict; the shadowing is
+ * implicitly allowed but discouraged.
  */
 
 /**

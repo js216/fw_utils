@@ -942,8 +942,12 @@ int reg_verify(struct reg_virt *v)
       return -1;
    }
 
-   // all fields must be present in at least one map
+   // all fields must be present in at least one map (except non-physical)
    for (int i = 0; v->fields[i]; i++) {
+      // skip non-physical virtual fields
+      if (v->fields[i][0] == '_')
+         continue;
+
       const struct reg_field *f = NULL;
       for (int j = 0; v->maps[j]; j++) {
          f = reg_find(v->maps[j], v->fields[i]);
@@ -1027,6 +1031,11 @@ int reg_adjust(struct reg_virt *v, const char *const field, uint64_t val)
       return -1;
    }
 
+   if (!field) {
+      ERROR("no field string given");
+      return -1;
+   }
+
    // locate virtual field
    bool found = false;
    for (int i = 0; v->fields[i]; i++)
@@ -1040,6 +1049,10 @@ int reg_adjust(struct reg_virt *v, const char *const field, uint64_t val)
       ERROR("did not find the virtual field");
       return -1;
    }
+
+   // non-physical fields: that's it, we're done!
+   if (field[0] == '_')
+      return 0;
 
    // install default map, if missing (the first one, id = 0)
    if (!v->base.field_map) {
