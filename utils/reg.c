@@ -650,7 +650,8 @@ static int reg_check_field_overlaps(struct reg_dev *d, const size_t i)
 
    // read back field i
    if (reg_get_field(d, &d->field_map[i]) != mask) {
-      ERROR("cannot read original value; overlap likely");
+      ERROR("cannot read original value; overlap likely for field");
+      ERROR(d->field_map[i].name);
       return -1;
    }
 
