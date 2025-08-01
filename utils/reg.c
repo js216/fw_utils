@@ -1050,6 +1050,7 @@ int reg_adjust(struct reg_virt *v, const char *const field, uint64_t val)
 
    if (!found) {
       ERROR("did not find the virtual field");
+      ERROR(field);
       return -1;
    }
 
