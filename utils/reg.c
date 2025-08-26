@@ -727,25 +727,26 @@ int reg_check(struct reg_dev *const d)
    const uint16_t flags = d->flags;
    d->flags |= REG_NOCOMM;
 
+   int fail = 0;
    if (reg_clear_buffer(d))
-      return -1;
+      fail = -1;
 
    for (size_t i = 0; d->field_map[i].name; i++) {
-      if (reg_check_fields(d, i))
-         return -1;
+      if (!fail && reg_check_fields(d, i))
+         fail = -1;
 
-      if (reg_check_field_overlaps(d, i))
-         return -1;
+      if (!fail && reg_check_field_overlaps(d, i))
+         fail = -1;
    }
 
-   if (reg_clear_buffer(d))
-      return -1;
+   if (!fail && reg_clear_buffer(d))
+      fail = -1;
 
-   if (reg_check_field_partial_coverage(d))
-      return -1;
+   if (!fail && reg_check_field_partial_coverage(d))
+      fail = -1;
 
-   if (reg_clear_buffer(d))
-      return -1;
+   if (!fail && reg_clear_buffer(d))
+      fail = -1;
 
    // restore original flags
    d->flags = flags;
@@ -754,6 +755,9 @@ int reg_check(struct reg_dev *const d)
       ERROR("cannot unlock the mutex");
       return -1;
    }
+
+   if (fail)
+      return -1;
 
    return 0;
 }
@@ -806,12 +810,16 @@ uint64_t reg_get(struct reg_dev *const d, const char *const field)
    }
 
    const struct reg_field *f = reg_find(d->field_map, field);
+   int fail                  = 0;
    if (!f) {
       ERROR("cannot find field");
-      return 0;
+      fail = -1;
    }
 
-   const uint64_t val = reg_get_field(d, f);
+   uint64_t val = 0;
+   if (!fail) {
+      val = reg_get_field(d, f);
+   }
 
    if (reg_unlock(d)) {
       ERROR("cannot unlock the mutex");
@@ -835,22 +843,23 @@ int reg_set(struct reg_dev *const d, const char *const field,
    }
 
    const struct reg_field *f = reg_find(d->field_map, field);
+   int fail                  = 0;
    if (!f) {
       ERROR("cannot find field");
-      return 0;
+      fail = -1;
    }
 
-   if (reg_set_field(d, f, val)) {
+   if (!fail && reg_set_field(d, f, val)) {
       ERROR("cannot set field");
-      return -1;
+      fail = -1;
    }
 
    if (reg_unlock(d)) {
       ERROR("cannot unlock the mutex");
-      return -1;
+      fail = -1;
    }
 
-   return 0;
+   return fail;
 }
 
 uint8_t reg_fwidth(const struct reg_dev *const d, const char *const field)
